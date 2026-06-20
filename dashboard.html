@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投研 AI 交互式三层架构原型 - Vault & Harness</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#090d16',
+                        cardBg: 'rgba(22, 30, 49, 0.5)',
+                        borderClr: 'rgba(255, 255, 255, 0.08)',
+                        brandPurple: '#8a2be2',
+                        brandPurpleLight: '#b388ff',
+                        brandGreen: '#10b981',
+                        brandRed: '#ef4444',
+                        brandBlue: '#00d2ff'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at 50% 50%, #111827 0%, #090d16 100%);
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glass {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .glow-purple {
+            box-shadow: 0 0 20px rgba(138, 43, 226, 0.3);
+        }
+        .glow-green {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+        .glow-red {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+        }
+        /* 隐藏滚动条 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* 数据流动虚线动画 */
+        @keyframes march {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+        .flow-line {
+            stroke-dasharray: 5, 5;
+            animation: march 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="text-gray-200 min-h-screen p-4 md:p-8 no-scrollbar" x-data="demoApp()">
+
+    <!-- 顶部 header -->
+    <header class="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brandPurpleLight via-brandBlue to-brandGreen">
+                投研 AI 系统交互式原型 <span class="text-sm font-semibold px-2 py-1 bg-brandPurple/20 border border-brandPurple/40 rounded-full text-brandPurpleLight ml-2">V2 - 三层 & L1-L7 融合</span>
+            </h1>
+            <p class="text-gray-400 text-sm mt-1">展示三层架构 (Prompt, Context, Harness) 与唯一真相 Vault (L1-L7 数据层) 的真实运行逻辑</p>
+        </div>
+        <div class="flex items-center gap-3 glass px-4 py-2 rounded-full text-xs">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-brandGreen animate-pulse"></span>
+            <span>Harness Engine: Running (Port 8000)</span>
+            <span class="text-gray-500">|</span>
+            <span class="mono">Daily Budget: $10.00 / Spend: $<span x-text="costTotal.toFixed(3)"></span></span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- 左侧：唯一真相 Vault (L1-L7 数据存储层) -->
+        <section class="lg:col-span-4 glass rounded-2xl p-6 h-[720px] flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brandPurpleLight" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                        唯一真相 Vault (L1-L7 数据层)
+                    </h2>
+                    <span class="text-xs text-gray-400">Vault Root: <span class="mono text-brandBlue">G:/touzi-agent/</span></span>
+                </div>
+                
+                <p class="text-gray-400 text-xs mb-4">
+                    所有的系统状态、提取的原子事实和拍板后的决策均在此处以纯 Markdown/YAML 结构存储。
+                </p>
+
+                <!-- L1 - L7 层级选择卡片 -->
+                <div class="space-y-2.5 max-h-[500px] overflow-y-auto pr-1 no-scrollbar">
+                    
+                    <!-- L1 -->
+                    <div class="p-3 rounded-lg cursor-pointer transition"
+                         :class="activeLayer === 'L1' ? 'bg-brandPurple/20 border border-brandPurple/60 text-white' : 'bg-gray-800/40 border border-transparent hover:border-gray-700'"
+                         @click="activeLayer = 'L1'">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-brandPurpleLight mono">L1 原始痕迹 (Raw Inbox)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 mono" x-text="L1Files.length + ' 原始文件'"></span>
+                        </div>
+                        <div class="text-[11px] text-gray-400 mt-1">保存对话、剪报和抓取的电话会 QA。</div>
+                    </div>
+
+                    <!-- L2 -->
+                    <div class="p-3 rounded-lg cursor-pointer transition"
+                         :class="activeLayer === 'L2' ? 'bg-brandBlue/20 border border-brandBlue/60 text-white' : 'bg-gray-800/40 border border-transparent hover:border-gray-700'"
+                         @click="activeLayer = 'L2'">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-brandBlue mono">L2 原子事实 (Facts)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 mono" x-text="L2Facts.length + ' 事实项'"></span>
+                        </div>
+                        <div class="text-[11px] text-gray-400 mt-1">自动清洗和结构化后的原子事实（强溯源）。</div>
+                    </div>
+
+                    <!-- L3 -->
+                    <div class="p-3 rounded-lg cursor-pointer transition"
+                         :class="activeLayer === 'L3' ? 'bg-yellow-500/20 border border-yellow-500/60 text-white' : 'bg-gray-800/40 border border-transparent hover:border-gray-700'"
+                         @click="activeLayer = 'L3'">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-yellow-500 mono">L3 身份画像 (Profiles)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 mono">4 个大师与个人包</span>
+                        </div>
+                        <div class="text-[11px] text-gray-400 mt-1">Sicong 专属偏好与白毛大师因子画像。</div>
+                    </div>
+
+                    <!-- L5 -->
+                    <div class="p-3 rounded-lg cursor-pointer transition"
+                         :class="activeLayer === 'L5' ? 'bg-brandGreen/20 border border-brandGreen/60 text-white' : 'bg-gray-800/40 border border-transparent hover:border-gray-700'"
+                         @click="activeLayer = 'L5'">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-brandGreen mono">L5 主动判断 (Judgments)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 mono" x-text="L5Judgment.status === 'approved' ? '已拍板' : '待拍板'"></span>
+                        </div>
+                        <div class="text-[11px] text-gray-400 mt-1">对标的的核心 Thesis 与 DCF 估值结果。</div>
+                    </div>
+
+                    <!-- L7 -->
+                    <div class="p-3 rounded-lg cursor-pointer transition"
+                         :class="activeLayer === 'L7' ? 'bg-red-500/20 border border-red-500/60 text-white' : 'bg-gray-800/40 border border-transparent hover:border-gray-700'"
+                         @click="activeLayer = 'L7'">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-red-500 mono">L7 交易动作 (Actions)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 mono" x-text="L7Trades.length + ' 交易记录'"></span>
+                        </div>
+                        <div class="text-[11px] text-gray-400 mt-1">真实的实盘 / 模拟盘交易动作流水。</div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 展示当前选中的 Layer 内容 -->
+            <div class="mt-4 border-t border-borderClr pt-4 flex-1 flex flex-col min-h-[220px]">
+                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex justify-between">
+                    <span>文件预览: <span class="text-white mono" x-text="getActiveFilePath()"></span></span>
+                    <span class="text-brandBlue font-mono">MD</span>
+                </div>
+                <div class="flex-1 bg-black/40 rounded-xl p-3 border border-borderClr text-xs font-mono overflow-y-auto max-h-[200px] no-scrollbar">
+                    <pre class="whitespace-pre-wrap text-gray-300 select-all" x-text="getActiveLayerContent()"></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右侧：Harness 执行舱与三层交互演练 -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+
+            <!-- 动态拓扑图 -->
+            <div class="glass rounded-2xl p-6">
+                <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-brandBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    Harness 动态执行状态与对抗演练
+                </h2>
+
+                <!-- 拓扑节点 -->
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4 py-2 bg-black/20 rounded-xl p-4 border border-borderClr">
+                    
+                    <!-- L1 Raw -->
+                    <div class="flex flex-col items-center">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs"
+                             :class="step >= 1 ? 'bg-brandPurple text-white glow-purple' : 'bg-gray-800 text-gray-500'">L1</div>
+                        <span class="text-[10px] mt-1 text-gray-400">原始输入</span>
+                    </div>
+
+                    <!-- Flow 1 -->
+                    <div class="hidden md:block flex-1 h-0.5">
+                        <svg class="w-full h-2 overflow-visible">
+                            <line x1="0" y1="4" x2="100%" y2="4" stroke="currentColor" stroke-width="2" 
+                                  class="transition duration-500" :class="step >= 2 ? 'text-brandPurple flow-line' : 'text-gray-800'"/>
+                        </svg>
+                    </div>
+
+                    <!-- Agent 3 -->
+                    <div class="flex flex-col items-center">
+                        <div class="w-20 h-10 rounded-lg flex flex-col items-center justify-center border text-xs"
+                             :class="step >= 2 ? 'border-brandPurple bg-brandPurple/10 text-white glow-purple' : 'border-gray-800 text-gray-500'">
+                            <span class="font-bold">Agent 3</span>
+                            <span class="text-[9px] text-gray-400">CFA 研究员</span>
+                        </div>
+                    </div>
+
+                    <!-- Flow 2 -->
+                    <div class="hidden md:block flex-1 h-0.5">
+                        <svg class="w-full h-2 overflow-visible">
+                            <line x1="0" y1="4" x2="100%" y2="4" stroke="currentColor" stroke-width="2" 
+                                  class="transition duration-500" :class="step >= 3 ? 'text-brandBlue flow-line' : 'text-gray-800'"/>
+                        </svg>
+                    </div>
+
+                    <!-- Agent 4 -->
+                    <div class="flex flex-col items-center">
+                        <div class="w-20 h-10 rounded-lg flex flex-col items-center justify-center border text-xs"
+                             :class="step >= 3 ? 'border-brandBlue bg-brandBlue/10 text-white' : 'border-gray-800 text-gray-500'">
+                            <span class="font-bold">Agent 4 (IA#1)</span>
+                            <span class="text-[9px] text-gray-400">投委会主席</span>
+                        </div>
+                    </div>
+
+                    <!-- Flow 3 -->
+                    <div class="hidden md:block flex-1 h-0.5">
+                        <svg class="w-full h-2 overflow-visible">
+                            <line x1="0" y1="4" x2="100%" y2="4" stroke="currentColor" stroke-width="2" 
+                                  class="transition duration-500" :class="step >= 4 ? 'text-brandRed flow-line' : 'text-gray-800'"/>
+                        </svg>
+                    </div>
+
+                    <!-- Agent 5 -->
+                    <div class="flex flex-col items-center">
+                        <div class="w-20 h-10 rounded-lg flex flex-col items-center justify-center border text-xs"
+                             :class="step >= 4 ? 'border-brandRed bg-brandRed/10 text-white glow-red' : 'border-gray-800 text-gray-500'">
+                            <span class="font-bold">Agent 5 (IA#2)</span>
+                            <span class="text-[9px] text-gray-400">魔鬼代言人</span>
+                        </div>
+                    </div>
+
+                    <!-- Flow 4 -->
+                    <div class="hidden md:block flex-1 h-0.5">
+                        <svg class="w-full h-2 overflow-visible">
+                            <line x1="0" y1="4" x2="100%" y2="4" stroke="currentColor" stroke-width="2" 
+                                  class="transition duration-500" :class="step >= 5 ? 'text-brandGreen flow-line' : 'text-gray-800'"/>
+                        </svg>
+                    </div>
+
+                    <!-- Permissions Gate -->
+                    <div class="flex flex-col items-center">
+                        <div class="w-12 h-12 rounded-full border-2 flex items-center justify-center text-[10px] font-bold"
+                             :class="step >= 5 ? (L5Judgment.status === 'approved' ? 'border-brandGreen bg-brandGreen/20 text-brandGreen glow-green' : 'border-yellow-500 text-yellow-500') : 'border-gray-800 text-gray-500'">
+                             GATE
+                        </div>
+                        <span class="text-[10px] mt-1 text-gray-400">写入门禁</span>
+                    </div>
+
+                </div>
+
+                <!-- 交互按钮组 -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
+                    <button class="px-3 py-2 rounded-xl text-xs font-semibold bg-brandPurple hover:bg-brandPurple/80 transition"
+                            @click="triggerStep1()">1. 灌入 L1 Inbox</button>
+                    <button class="px-3 py-2 rounded-xl text-xs font-semibold bg-brandPurple/60 hover:bg-brandPurple/55 transition disabled:opacity-50"
+                            :disabled="step < 1" @click="triggerStep2()">2. 提炼 L2 Facts</button>
+                    <button class="px-3 py-2 rounded-xl text-xs font-semibold bg-brandBlue hover:bg-brandBlue/80 transition disabled:opacity-50"
+                            :disabled="step < 2" @click="triggerStep3()">3. 跑估值 (Agent 4)</button>
+                    <button class="px-3 py-2 rounded-xl text-xs font-semibold bg-brandRed hover:bg-brandRed/80 transition disabled:opacity-50"
+                            :disabled="step < 3" @click="triggerStep4()">4. 对抗压测 (Agent 5)</button>
+                    <button class="px-3 py-2 rounded-xl text-xs font-semibold bg-gray-700 hover:bg-gray-600 transition"
+                            @click="resetDemo()">重置状态</button>
+                </div>
+            </div>
+
+            <!-- 控制中心核心双板块 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <!-- 估值计算与大师因子 (Context + Prompt 实操) -->
+                <div class="glass rounded-2xl p-6 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-sm font-bold text-brandBlue uppercase tracking-wider mb-4 flex items-center justify-between">
+                            <span>DCF 估值引擎与因子装配</span>
+                            <span class="text-xs text-gray-500 font-normal">Context 层注入控制</span>
+                        </h3>
+
+                        <!-- 大师因子勾选 -->
+                        <div class="mb-4">
+                            <span class="text-xs text-gray-400 block mb-2">活跃的大师因子包 (L3 Profiles)</span>
+                            <div class="grid grid-cols-3 gap-2">
+                                <label class="flex items-center gap-2 bg-black/40 border border-borderClr p-2 rounded-xl text-xs cursor-pointer">
+                                    <input type="checkbox" x-model="profiles.buffett" class="accent-brandPurple" @change="recalculateDCF()">
+                                    <span>巴菲特</span>
+                                </label>
+                                <label class="flex items-center gap-2 bg-black/40 border border-borderClr p-2 rounded-xl text-xs cursor-pointer">
+                                    <input type="checkbox" x-model="profiles.druckenmiller" class="accent-brandPurple" @change="recalculateDCF()">
+                                    <span>德鲁肯米勒</span>
+                                </label>
+                                <label class="flex items-center gap-2 bg-black/40 border border-borderClr p-2 rounded-xl text-xs cursor-pointer">
+                                    <input type="checkbox" x-model="profiles.sun" class="accent-brandPurple" @change="recalculateDCF()">
+                                    <span>孙宇晨</span>
+                                </label>
+                            </div>
+                            <!-- 因子衰减说明 -->
+                            <div class="text-[10px] text-yellow-500/80 mt-2 bg-yellow-500/10 border border-yellow-500/20 p-2 rounded-lg" x-show="profiles.buffett">
+                                ⚠️ [防火墙激活] 巴菲特“科技股折价”因子生效：因 AAPL 属于高科技股，其否决权重被强制衰减 50% 
+                            </div>
+                        </div>
+
+                        <!-- 估值参数滑块 -->
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-gray-400">折现率 (WACC)</span>
+                                    <span class="text-brandBlue font-bold mono" x-text="(dcfParams.wacc * 100).toFixed(1) + '%'"></span>
+                                </div>
+                                <input type="range" min="0.05" max="0.15" step="0.005" x-model="dcfParams.wacc" class="w-full accent-brandBlue" @input="recalculateDCF()">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-gray-400">永续增长率 (g)</span>
+                                    <span class="text-brandBlue font-bold mono" x-text="(dcfParams.g * 100).toFixed(1) + '%'"></span>
+                                </div>
+                                <input type="range" min="0.0" max="0.03" step="0.001" x-model="dcfParams.g" class="w-full accent-brandBlue" @input="recalculateDCF()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 动态估值曲线 -->
+                    <div class="mt-6 h-[180px] w-full">
+                        <canvas id="dcfChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Harness Gate & Guardrails (运行时拦截) -->
+                <div class="glass rounded-2xl p-6 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-sm font-bold text-brandRed uppercase tracking-wider mb-4 flex items-center justify-between">
+                            <span>Harness 质检与门禁拦截</span>
+                            <span class="text-xs text-gray-500 font-normal">Harness 层拦截</span>
+                        </h3>
+
+                        <!-- 虚假数据注入测试 (第一道 Guardrail 拦截演练) -->
+                        <div class="mb-4 bg-black/40 border border-borderClr p-3 rounded-xl">
+                            <span class="text-xs text-gray-400 block mb-2 font-bold">第一道防线：数据源正则校验器校验</span>
+                            <div class="flex gap-2">
+                                <input type="text" x-model="customFactText" class="flex-1 bg-gray-900 border border-borderClr rounded-lg px-3 py-1.5 text-xs font-mono" placeholder="注入一句假数据，看看拦截...">
+                                <button class="bg-brandRed hover:bg-brandRed/80 transition text-white px-3 py-1.5 rounded-lg text-xs font-semibold" @click="testGuardrail1()">注入校验</button>
+                            </div>
+                            <div class="text-[10px] text-gray-500 mt-1.5">可输入例如: <span class="text-white mono">苹果毛利率100% <- [FakeDoc#Page_1]</span></div>
+                        </div>
+
+                        <!-- 强防线状态面板 -->
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between items-center bg-black/20 p-2 rounded border border-borderClr">
+                                <span class="text-gray-400">第 1 道：正则溯源校验 (Hallucination)</span>
+                                <span class="font-bold" :class="guardrailStatus.g1 === 'PASS' ? 'text-brandGreen' : (guardrailStatus.g1 === 'FAIL' ? 'text-brandRed animate-pulse' : 'text-gray-500')" x-text="guardrailStatus.g1"></span>
+                            </div>
+                            <div class="flex justify-between items-center bg-black/20 p-2 rounded border border-borderClr">
+                                <span class="text-gray-400">第 2 道：一致性与完整性校验 (Sanity)</span>
+                                <span class="font-bold" :class="guardrailStatus.g2 === 'PASS' ? 'text-brandGreen' : (guardrailStatus.g2 === 'FAIL' ? 'text-brandRed animate-pulse' : 'text-gray-500')" x-text="guardrailStatus.g2"></span>
+                            </div>
+                            <div class="flex justify-between items-center bg-black/20 p-2 rounded border border-borderClr">
+                                <span class="text-gray-400">第 3 道：合规词汇校验 (Compliance)</span>
+                                <span class="font-bold" :class="guardrailStatus.g3 === 'PASS' ? 'text-brandGreen' : (guardrailStatus.g3 === 'FAIL' ? 'text-brandRed animate-pulse' : 'text-gray-500')" x-text="guardrailStatus.g3"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 状态展示 & 写入拍板 -->
+                    <div class="mt-6 border-t border-borderClr pt-4 flex flex-col justify-end">
+                        <div class="flex justify-between items-center text-xs mb-3">
+                            <span class="text-gray-400">L5 Judgment status:</span>
+                            <span class="mono font-bold px-2 py-0.5 rounded text-[10px]"
+                                  :class="L5Judgment.status === 'approved' ? 'bg-brandGreen/20 text-brandGreen border border-brandGreen/50' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50'"
+                                  x-text="L5Judgment.status.toUpperCase()"></span>
+                        </div>
+
+                        <!-- 门禁写入拦截机制 -->
+                        <div class="bg-yellow-500/10 border border-yellow-500/25 rounded-xl p-3 text-xs mb-4" x-show="L5Judgment.status === 'proposed'">
+                            <span class="font-bold text-yellow-500 block">⚠️ permissions.md 门禁生效中</span>
+                            <span class="text-gray-400 text-[11px] block mt-0.5">Agent (只读) 仅输出了 proposed 状态提案。需要 Hugh 拍板落库。</span>
+                        </div>
+
+                        <button class="w-full py-3 rounded-xl font-bold transition flex items-center justify-center gap-2"
+                                :class="L5Judgment.status === 'approved' ? 'bg-gray-800 text-gray-500 border border-gray-700 cursor-not-allowed' : 'bg-brandGreen hover:bg-brandGreen/80 text-black glow-green'"
+                                :disabled="L5Judgment.status === 'approved' || step < 4"
+                                @click="approveL5()">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            拍板落库 (Approve to L5)
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 控制台输出 (实时 Trace 记录) -->
+            <div class="glass rounded-2xl p-6">
+                <h3 class="text-sm font-bold text-brandPurpleLight uppercase tracking-wider mb-2 flex justify-between items-center">
+                    <span>终端实时 Trace 日志</span>
+                    <button class="text-xs text-gray-500 hover:text-gray-300 font-normal" @click="traces = []">清空</button>
+                </h3>
+                <div class="h-[180px] bg-black/60 rounded-xl p-4 border border-borderClr text-xs font-mono overflow-y-auto no-scrollbar" id="consoleLogs">
+                    <template x-for="trace in traces" :key="trace.time">
+                        <div class="mb-1.5 flex gap-2">
+                            <span class="text-gray-500" x-text="trace.time"></span>
+                            <span :class="trace.type === 'error' ? 'text-brandRed' : (trace.type === 'success' ? 'text-brandGreen' : (trace.type === 'info' ? 'text-brandBlue' : 'text-gray-300'))" x-text="trace.content"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+        function demoApp() {
+            let myChart = null;
+            return {
+                step: 0,
+                activeLayer: 'L1',
+                costTotal: 0.0,
+                traces: [],
+                customFactText: '',
+                
+                // DCF 引擎变量
+                dcfParams: {
+                    wacc: 0.08,
+                    g: 0.02
+                },
+
+                // 大师激活
+                profiles: {
+                    buffett: false,
+                    druckenmiller: false,
+                    sun: false
+                },
+
+                // Guardrail 状态
+                guardrailStatus: {
+                    g1: 'PENDING',
+                    g2: 'PENDING',
+                    g3: 'PENDING'
+                },
+
+                // 数据层 L1-L7 模拟文件内容
+                L1Files: [
+                    { name: 'AAPL-2025-Q4-Call-Transcript.md', content: '苹果 2025 年第四季度服务业营收为 250 亿美元，同比增长 12%。库克在 Q4 电话会中指出，AI 智能体的变现周期可能比预期更长。' },
+                    { name: 'macro-bond-rates.md', content: '当前 10 年期美债收益率收盘报 4.2%。' }
+                ],
+                L2Facts: [
+                    { id: 'FACT_01cf3', content: '苹果 2025 年第四季度服务业营收为 250 亿美元，同比增长 12%。<- [AAPL-2025-Q4-Call-Transcript.md#Page_12]' },
+                    { id: 'FACT_9a2ef', content: '库克在 Q4 电话会中指出，AI 智能体变现周期较长。<- [AAPL-2025-Q4-Call-Transcript.md#Page_3]' }
+                ],
+                L5Judgment: {
+                    ticker: 'AAPL',
+                    thesis: '依靠高粘性服务业，具备极宽护城河。',
+                    valuation: {
+                        bear: 190.5,
+                        base: 225.0,
+                        bull: 250.0
+                    },
+                    status: 'proposed' // proposed | approved
+                },
+                L7Trades: [
+                    { date: '2026-06-18 10:00:00', type: 'BUY', ticker: 'AAPL', shares: 100, price: 201.2 }
+                ],
+
+                init() {
+                    this.addTrace('Harness initialization complete. Ready for simulation.', 'success');
+                    this.$nextTick(() => {
+                        this.renderChart();
+                    });
+                },
+
+                addTrace(content, type = 'info') {
+                    const time = new Date().toLocaleTimeString();
+                    this.traces.push({ time, content, type });
+                    // 滚动到底部
+                    setTimeout(() => {
+                        const consoleDiv = document.getElementById('consoleLogs');
+                        if (consoleDiv) consoleDiv.scrollTop = consoleDiv.scrollHeight;
+                    }, 50);
+                },
+
+                getActiveFilePath() {
+                    switch (this.activeLayer) {
+                        case 'L1': return '_inbox/AAPL-2025-Q4-Call-Transcript.md';
+                        case 'L2': return 'L2-facts/AAPL-facts.md';
+                        case 'L3': return 'L3-profile/persona-buffett.md';
+                        case 'L5': return 'L5-judgments/AAPL-judgment.md';
+                        case 'L7': return 'L7-actions/trades.md';
+                    }
+                },
+
+                getActiveLayerContent() {
+                    switch (this.activeLayer) {
+                        case 'L1':
+                            return `---
+type: L1-raw
+captured_at: 2026-06-18T18:00:00+08:00
+---
+${this.L1Files[0].content}`;
+                        case 'L2':
+                            return `---
+type: L2-facts
+last_extracted: 2026-06-18
+---
+- [${this.L2Facts[0].id}] ${this.L2Facts[0].content}
+- [${this.L2Facts[1].id}] ${this.L2Facts[1].content}`;
+                        case 'L3':
+                            return `---
+name: Warren Buffett
+load_trigger: on_value_stock
+core_metrics:
+  min_roe: 0.15
+  debt_to_equity_max: 0.5
+  preferred_industries: ["Consumer", "Financial", "Energy"]
+forbidden_rules:
+  - "严禁在高市盈率（PE > 35）且无强现金流支撑时买入"
+---
+巴菲特投资原则摘要：安全边际第一，不要亏损。对于不确定、看不懂的科技股有 0.5 的折价。`;
+                        case 'L5':
+                            return `---
+ticker: ${this.L5Judgment.ticker}
+last_updated: 2026-06-18
+status: ${this.L5Judgment.status}
+---
+# 核心论点 (Thesis)
+${this.L5Judgment.thesis}
+
+# 估值区间 (Valuation)
+- 悲观估值: ${this.L5Judgment.valuation.bear.toFixed(1)} 美元
+- 中性估值 (Base): ${this.L5Judgment.valuation.base.toFixed(1)} 美元
+- 乐观估值: ${this.L5Judgment.valuation.bull.toFixed(1)} 美元`;
+                        case 'L7':
+                            return `---
+type: L7-actions
+---
+- [TRADE_88aef] ${this.L7Trades[0].date} | ${this.L7Trades[0].type} | ${this.L7Trades[0].ticker} | ${this.L7Trades[0].shares} 股 | 价格: ${this.L7Trades[0].price} 美元`;
+                    }
+                },
+
+                triggerStep1() {
+                    this.step = 1;
+                    this.costTotal += 0.002;
+                    this.addTrace('System2: overnight inbox-ingest triggered. Loading _inbox/ files.', 'info');
+                    this.addTrace('Context assembled: Raw text retrieved successfully.', 'success');
+                },
+
+                triggerStep2() {
+                    this.step = 2;
+                    this.costTotal += 0.005;
+                    this.addTrace('Agent 3: Parsing raw inbox data... Performing CoT inference.', 'info');
+                    this.addTrace('Agent 3: Output L2 facts proposal: FACT_01cf3 & FACT_9a2ef.', 'success');
+                    this.addTrace('Harness: L2-facts written successfully without user validation (Automatic mechanical layer approval).', 'success');
+                },
+
+                triggerStep3() {
+                    this.step = 3;
+                    this.costTotal += 0.025;
+                    this.addTrace('System 1 query: "AAPL 能买吗？" -> Loading Context matrices.', 'info');
+                    this.addTrace('Context Loader: Assembling L2 Facts + L3 Profiles (Buffett) + Macro Rates.', 'info');
+                    this.addTrace('Agent 4 (IA#1): Evaluating... Base valuation: $' + this.L5Judgment.valuation.base.toFixed(1) + ', Current Price: $201.20', 'info');
+                    
+                    // 运行一致性校验 (第 2 道 Guardrail)
+                    const baseVal = this.L5Judgment.valuation.base;
+                    const margin = (baseVal - 201.20) / baseVal;
+                    if (margin < 0.15) {
+                        this.guardrailStatus.g2 = 'FAIL';
+                        this.addTrace('Guardrail 2 (Sanity) FAILED: Current price 201.20 fails 15% safety margin requirement. IA#1 override to HOLD.', 'error');
+                    } else {
+                        this.guardrailStatus.g2 = 'PASS';
+                        this.addTrace('Guardrail 2 (Sanity) PASSED: 15% safety margin satisfied.', 'success');
+                    }
+                    this.guardrailStatus.g3 = 'PASS';
+                },
+
+                triggerStep4() {
+                    this.step = 4;
+                    this.costTotal += 0.035;
+                    this.addTrace('Agent 5 (IA#2): Triggered for Contrastive Rebuttal.', 'info');
+                    this.addTrace('Agent 5: Optimistic assumptions challenged. High WACC applied to DCF model.', 'info');
+                    
+                    // 如果巴菲特处于激活状态，调整估值
+                    let targetBear = this.L5Judgment.valuation.bear;
+                    if (this.profiles.buffett) {
+                        this.addTrace('Agent 5: Applied 50% Buffett persona discount due to high PE.', 'info');
+                    }
+                    this.addTrace('Agent 5 Output: Rebuttal proposal filed. Suggesting lower entry price.', 'success');
+                },
+
+                testGuardrail1() {
+                    if (!this.customFactText) return;
+                    this.addTrace(`Testing G1 Guardrail with input: "${this.customFactText}"`, 'info');
+                    // 正则检测 <- [文件名#页码]
+                    const regex = /<- \[(.*?)#(Page_.*?)\]/;
+                    const match = this.customFactText.match(regex);
+                    if (match) {
+                        const doc = match[1];
+                        const page = match[2];
+                        // 校验文件名是否在 Context L1 中存在
+                        if (doc === 'AAPL-2025-Q4-Call-Transcript.md') {
+                            this.guardrailStatus.g1 = 'PASS';
+                            this.addTrace(`Guardrail 1 (Hallucination) PASSED: Document ${doc} found in context.`, 'success');
+                        } else {
+                            this.guardrailStatus.g1 = 'FAIL';
+                            this.addTrace(`Guardrail 1 (Hallucination) FAILED: Document ${doc} is not present in Context vault. Rejection triggered.`, 'error');
+                        }
+                    } else {
+                        this.guardrailStatus.g1 = 'FAIL';
+                        this.addTrace(`Guardrail 1 (Hallucination) FAILED: Missing anchor "<- [DocName#Page_X]". Rejection triggered.`, 'error');
+                    }
+                },
+
+                approveL5() {
+                    this.L5Judgment.status = 'approved';
+                    this.addTrace('User action: Hugh approved the proposal.', 'info');
+                    this.addTrace('Harness Gate: permissions.md validated. Writing approved status to L5-judgments/AAPL-judgment.md.', 'success');
+                },
+
+                resetDemo() {
+                    this.step = 0;
+                    this.L5Judgment.status = 'proposed';
+                    this.costTotal = 0.0;
+                    this.dcfParams.wacc = 0.08;
+                    this.dcfParams.g = 0.02;
+                    this.profiles.buffett = false;
+                    this.profiles.druckenmiller = false;
+                    this.profiles.sun = false;
+                    this.guardrailStatus = { g1: 'PENDING', g2: 'PENDING', g3: 'PENDING' };
+                    this.traces = [];
+                    this.addTrace('System state reset. Ready for next loop.', 'success');
+                    this.recalculateDCF();
+                },
+
+                // 动态计算 DCF (简化数学表达用于可视化展示)
+                recalculateDCF() {
+                    const baseCashFlow = 250; // 服务业营收 250 亿
+                    const wacc = parseFloat(this.dcfParams.wacc);
+                    const g = parseFloat(this.dcfParams.g);
+                    
+                    // 基础 DCF 估值公式: CF / (wacc - g)
+                    let dcfVal = baseCashFlow / (wacc - g);
+                    
+                    // 缩放到合理股价区间 (例如 150 - 300)
+                    let basePrice = Math.min(Math.max(dcfVal * 0.05 + 100, 160), 280);
+                    
+                    // 应用大师因子权重
+                    if (this.profiles.buffett) {
+                        basePrice = basePrice * 0.9; // 巴菲特对高科技估值打 9 折
+                    }
+                    if (this.profiles.sun) {
+                        basePrice = basePrice * 1.15; // 散户冲动溢价
+                    }
+                    
+                    this.L5Judgment.valuation.base = basePrice;
+                    this.L5Judgment.valuation.bear = basePrice * 0.85;
+                    this.L5Judgment.valuation.bull = basePrice * 1.12;
+
+                    // 自动判断安全边际
+                    const margin = (basePrice - 201.20) / basePrice;
+                    if (this.step >= 3) {
+                        this.guardrailStatus.g2 = margin >= 0.15 ? 'PASS' : 'FAIL';
+                    }
+
+                    this.updateChart(basePrice);
+                },
+
+                renderChart() {
+                    const ctx = document.getElementById('dcfChart').getContext('2d');
+                    myChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['悲观 (Bear)', '中性 (Base)', '乐观 (Bull)', '现价 (Market)'],
+                            datasets: [{
+                                label: '估值 vs 现价 (USD)',
+                                data: [
+                                    this.L5Judgment.valuation.bear,
+                                    this.L5Judgment.valuation.base,
+                                    this.L5Judgment.valuation.bull,
+                                    201.20
+                                ],
+                                backgroundColor: [
+                                    'rgba(239, 68, 68, 0.4)',  // 红色
+                                    'rgba(0, 210, 255, 0.4)',  // 蓝色
+                                    'rgba(16, 185, 129, 0.4)', // 绿色
+                                    'rgba(138, 43, 226, 0.4)'  // 紫色
+                                ],
+                                borderColor: [
+                                    'rgba(239, 68, 68, 1)',
+                                    'rgba(0, 210, 255, 1)',
+                                    'rgba(16, 185, 129, 1)',
+                                    'rgba(138, 43, 226, 1)'
+                                ],
+                                borderWidth: 1.5
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: {
+                                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                    ticks: { color: 'rgba(255, 255, 255, 0.6)', font: { size: 10 } }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: 'rgba(255, 255, 255, 0.8)', font: { size: 10 } }
+                                }
+                            }
+                        }
+                    });
+                },
+
+                updateChart(basePrice) {
+                    if (!myChart) return;
+                    myChart.data.datasets[0].data = [
+                        basePrice * 0.85,
+                        basePrice,
+                        basePrice * 1.12,
+                        201.20
+                    ];
+                    myChart.update();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

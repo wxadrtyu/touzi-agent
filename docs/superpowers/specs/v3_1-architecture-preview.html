@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>V3.1 统一架构设计 - 产业链卡点研究方法论</title>
+<style>
+  :root {
+    --bg: #0d1117; --bg-card: #161b22; --bg-code: #1c2128;
+    --border: #30363d; --text: #e6edf3; --text-dim: #8b949e;
+    --accent: #58a6ff; --accent2: #3fb950; --accent3: #f0883e;
+    --accent4: #f778ba; --accent5: #a371f7;
+    --red: #f85149; --yellow: #d29922; --green: #3fb950;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
+  .header { background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%); border-bottom: 1px solid var(--border); padding: 48px 24px 32px; text-align: center; }
+  .header h1 { font-size: 28px; font-weight: 700; background: linear-gradient(135deg, var(--accent), var(--accent4)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px; }
+  .header .meta { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+  .badge { display: inline-block; padding: 4px 12px; border-radius: 16px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); background: var(--bg-card); }
+  .badge.blue { color: var(--accent); border-color: rgba(88,166,255,0.3); }
+  .badge.green { color: var(--green); border-color: rgba(63,185,80,0.3); }
+  .badge.orange { color: var(--accent3); border-color: rgba(240,136,62,0.3); }
+  .badge.pink { color: var(--accent4); border-color: rgba(247,120,186,0.3); }
+  .nav { position: sticky; top: 0; background: rgba(13,17,23,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 100; padding: 12px 24px; }
+  .nav-inner { max-width: 1200px; margin: 0 auto; display: flex; gap: 8px; overflow-x: auto; }
+  .nav a { color: var(--text-dim); text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; white-space: nowrap; transition: all 0.2s; }
+  .nav a:hover { color: var(--accent); background: rgba(88,166,255,0.1); }
+  section { margin-bottom: 48px; scroll-margin-top: 60px; }
+  h2 { font-size: 24px; font-weight: 700; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  h2 .icon { font-size: 22px; }
+  h3 { font-size: 18px; font-weight: 600; margin: 28px 0 14px; color: var(--accent); }
+  h4 { font-size: 15px; font-weight: 600; margin: 20px 0 10px; color: var(--accent3); }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 12px 0 12px 24px; }
+  li { margin-bottom: 6px; }
+  strong { font-weight: 600; }
+  code { font-family: "Cascadia Code", "Fira Code", Consolas, monospace; background: var(--bg-code); padding: 2px 6px; border-radius: 4px; font-size: 13px; color: var(--accent3); }
+  .v31-tag { display: inline-block; background: rgba(247,120,186,0.15); color: var(--accent4); font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 6px; font-weight: 600; }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin: 16px 0; }
+  .card-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+  .table-wrap { overflow-x: auto; margin: 16px 0; border-radius: 8px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: var(--bg-card); color: var(--accent); font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 10px 16px; border-bottom: 1px solid rgba(48,54,61,0.5); vertical-align: top; }
+  tr:hover td { background: rgba(88,166,255,0.03); }
+  tr:last-child td { border-bottom: none; }
+  .evidence-a { color: var(--green); font-weight: 700; }
+  .evidence-b { color: var(--accent); font-weight: 600; }
+  .evidence-c { color: var(--yellow); }
+  .evidence-d { color: var(--red); }
+  .flow { display: flex; flex-direction: column; gap: 8px; margin: 20px 0; }
+  .flow-step { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; font-size: 14px; }
+  .flow-arrow { text-align: center; color: var(--text-dim); font-size: 18px; }
+  .guardrail { display: flex; gap: 16px; margin: 12px 0; align-items: flex-start; }
+  .guardrail-num { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; border: 2px solid; }
+  .g1 { color: var(--green); border-color: var(--green); background: rgba(63,185,80,0.1); }
+  .g2 { color: var(--accent3); border-color: var(--accent3); background: rgba(240,136,62,0.1); }
+  .g3 { color: var(--red); border-color: var(--red); background: rgba(248,81,73,0.1); }
+  .g4 { color: var(--accent4); border-color: var(--accent4); background: rgba(247,120,186,0.1); }
+  .code-block { background: var(--bg-code); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin: 16px 0; overflow-x: auto; }
+  .code-block pre { font-family: "Cascadia Code", "Fira Code", Consolas, monospace; font-size: 13px; line-height: 1.6; color: var(--text); }
+  .layer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin: 20px 0; }
+  .layer-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; border-left: 4px solid var(--accent); }
+  .layer-card .layer-name { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .layer-card .layer-path { font-size: 12px; color: var(--accent3); font-family: monospace; margin-bottom: 6px; }
+  .layer-card .layer-desc { font-size: 13px; color: var(--text-dim); }
+  .consensus { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+  .c-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .c-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
+  .c-orange { background: rgba(240,136,62,0.15); color: var(--accent3); }
+  .c-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .highlight-box { background: rgba(247,120,186,0.08); border: 1px solid rgba(247,120,186,0.2); border-radius: 10px; padding: 20px; margin: 16px 0; }
+  .footer { text-align: center; padding: 40px 24px; color: var(--text-dim); font-size: 13px; border-top: 1px solid var(--border); margin-top: 40px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>投资研究 AI 系统规格说明书 V3.1</h1>
+  <p style="color:var(--text-dim); font-size:15px;">同心圆三层 + 双循环 + L1-L7 + 产业链卡点研究方法论</p>
+  <div class="meta">
+    <span class="badge blue">日期: 2026-06-18</span>
+    <span class="badge green">状态: Proposed</span>
+    <span class="badge orange">技术栈: Obsidian + Python</span>
+    <span class="badge pink">V3.1 新增: 产业链研究方法论</span>
+  </div>
+</div>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#changes">V3.1 变化</a>
+    <a href="#methodology">研究方法论</a>
+    <a href="#evidence">证据等级</a>
+    <a href="#five-stage">五段式流程</a>
+    <a href="#l1-l7">L1-L7 数据层</a>
+    <a href="#agents">7 个 Agent</a>
+    <a href="#guardrails">四道 Guardrails</a>
+    <a href="#workflow">双循环工作流</a>
+    <a href="#diff">版本对照</a>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- V3.1 变化 -->
+<section id="changes">
+  <h2><span class="icon">🔄</span> V3.1 相对 V3 的核心变化</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>变化项</th><th>V3</th><th>V3.1</th></tr></thead>
+      <tbody>
+        <tr><td><strong>研究方法论</strong></td><td>无系统化方法论</td><td>新增五段式产业链卡点研究流程 <span class="v31-tag">NEW</span></td></tr>
+        <tr><td><strong>证据等级</strong></td><td>无</td><td>L2 事实必须标注 A/B/C/D 证据等级 <span class="v31-tag">NEW</span></td></tr>
+        <tr><td><strong>底层逻辑</strong></td><td>DCF 估值为主</td><td>新增底层逻辑三问（需求/瓶颈/映射） <span class="v31-tag">NEW</span></td></tr>
+        <tr><td><strong>产业链拆解</strong></td><td>无</td><td>L0-L4 五层产业链拆解框架 <span class="v31-tag">NEW</span></td></tr>
+        <tr><td><strong>公司分类</strong></td><td>无标准</td><td>重点线索 / 观察线索 / 暂不适合 <span class="v31-tag">NEW</span></td></tr>
+        <tr><td><strong>研究目标</strong></td><td>投资建议</td><td><strong>研究线索优先，不是投资建议</strong> <span class="v31-tag">NEW</span></td></tr>
+        <tr><td><strong>防幻觉</strong></td><td>溯源校验</td><td>新增防幻觉检查表（第四道 Guardrail） <span class="v31-tag">NEW</span></td></tr>
+        <tr><td><strong>红队证伪</strong></td><td>IA#2 魔鬼代言人</td><td>新增研究阶段红队证伪流程 <span class="v31-tag">NEW</span></td></tr>
+        <tr><td><strong>特殊信源</strong></td><td>无</td><td>老黄/孙哥/特朗普 D 级信源可作线索 <span class="v31-tag">NEW</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 研究方法论 -->
+<section id="methodology">
+  <h2><span class="icon">🔬</span> 产业链卡点研究方法论 <span class="v31-tag">V3.1 核心</span></h2>
+
+  <div class="highlight-box">
+    <h3>研究哲学</h3>
+    <p><strong>核心原则：先拆产业链，再找卡点，最后映射公司。</strong></p>
+    <ol style="margin-top:12px;">
+      <li><strong>研究线索优先</strong>：最终目标是输出研究线索，不是投资建议</li>
+      <li><strong>证据强制溯源</strong>：所有关键数字必须写来源、日期和证据等级。无来源标"待核验"</li>
+      <li><strong>公司分类标准</strong>：重点线索 / 观察线索 / 暂不适合作为案例</li>
+    </ol>
+  </div>
+
+  <h3>底层逻辑三问</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>问题</th><th>核心检验点</th></tr></thead>
+      <tbody>
+        <tr><td><strong>1. 需求是否真实？</strong></td><td>需求来自谁？是否有公告/财报/招标/资本开支/政策支撑？短期脉冲还是持续 1-3 年？</td></tr>
+        <tr><td><strong>2. 瓶颈在哪里？</strong></td><td>哪一层扩产最慢？替代最难？认证周期最长？良率/设备/材料/工艺构成硬约束？</td></tr>
+        <tr><td><strong>3. 股票映射是否有证据？</strong></td><td>哪些公司真实覆盖卡点？有收入/订单/客户/产能/认证/募投证据？主营业务还是蹭热点？</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 证据等级 -->
+<section id="evidence">
+  <h2><span class="icon">📊</span> 证据等级体系 <span class="v31-tag">V3.1 新增</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>等级</th><th>来源类型</th><th>定位</th><th>使用规则</th></tr></thead>
+      <tbody>
+        <tr><td class="evidence-a">A级</td><td>公告、年报、半年报、招股书、交易所互动、招标/中标公告</td><td>核心证据</td><td>可作为结论支撑</td></tr>
+        <tr><td class="evidence-b">B级</td><td>机构调研、管理层交流、权威行业数据、客户供应链公开信息</td><td>辅助判断</td><td>可辅助判断，不可单独作结论</td></tr>
+        <tr><td class="evidence-c">C级</td><td>券商研报、媒体报道、行业文章</td><td>参考线索</td><td>只能参考，需 A/B 级交叉验证</td></tr>
+        <tr><td class="evidence-d">D级</td><td>社交媒体、KOL、论坛、传闻</td><td>线索</td><td>只能作线索。<strong>例外：老黄/孙哥/特朗普发言可作有效线索</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 五段式流程 -->
+<section id="five-stage">
+  <h2><span class="icon">📋</span> 五段式研究流程 <span class="v31-tag">V3.1 核心</span></h2>
+
+  <div class="flow">
+    <div class="flow-step" style="border-color: var(--green);">
+      <strong style="color:var(--green);">第一段：产业链拆解</strong> — 先画地图，不先列股票<br>
+      <span style="font-size:13px; color:var(--text-dim);">按 L0-L4 拆解目标赛道，输出 10-20 个候选卡点线索</span>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step" style="border-color: var(--accent);">
+      <strong style="color:var(--accent);">第二段：证据复筛</strong> — 用公告和财报穿透概念<br>
+      <span style="font-size:13px; color:var(--text-dim);">逐个检查候选公司，输出证据表（含证据等级）</span>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step" style="border-color: var(--accent3);">
+      <strong style="color:var(--accent3);">第三段：红队证伪</strong> — 主动反驳<br>
+      <span style="font-size:13px; color:var(--text-dim);">对每个"重点线索"做反向审查，输出红队反证表</span>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step" style="border-color: var(--accent4);">
+      <strong style="color:var(--accent4);">第四段：防幻觉检查</strong> — 把可能夸大的结论拎出来<br>
+      <span style="font-size:13px; color:var(--text-dim);">输出防幻觉检查表</span>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step" style="border-color: var(--accent5);">
+      <strong style="color:var(--accent5);">第五段：最终输出</strong> — 适合短视频展示<br>
+      <span style="font-size:13px; color:var(--text-dim);">产业链卡点地图 + 证据表 + 红队表 + 跟踪表 + 防幻觉表</span>
+    </div>
+  </div>
+
+  <h3>L0-L4 产业链拆解框架</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>层级</th><th>定义</th><th>关注点</th></tr></thead>
+      <tbody>
+        <tr><td><strong>L0 终端需求</strong></td><td>最终应用场景</td><td>需求真实性</td></tr>
+        <tr><td><strong>L1 系统/集成</strong></td><td>系统方案、整机、平台、交付、认证、客户导入</td><td>认证周期、客户壁垒</td></tr>
+        <tr><td><strong>L2 核心部件</strong></td><td>决定性能或交付的关键部件、技术、良率、产能</td><td>良率、产能瓶颈</td></tr>
+        <tr><td><strong>L3 材料/工艺/设备</strong></td><td>材料、工艺、设备、检测、国产化、扩产周期</td><td>扩产周期、设备约束</td></tr>
+        <tr><td><strong>L4 上游资源</strong></td><td>原材料、能源、资源、基础设备</td><td>供给稳定性</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>证据复筛输出表格</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>公司</th><th>代码</th><th>对应环节</th><th>业务纯度</th><th>公开证据</th><th>证据等级</th><th>不能证明什么</th><th>初步归类</th></tr></thead>
+      <tbody>
+        <tr><td>示例公司</td><td>300xxx</td><td>L2 核心部件</td><td>85%</td><td>年报披露</td><td class="evidence-a">A级</td><td>客户认证进度</td><td>重点线索</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:13px; color:var(--text-dim);">*初步归类只能用：重点线索 / 观察线索 / 暂不适合作为案例</p>
+
+  <h3>红队证伪输出表格</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>公司</th><th>最大风险</th><th>证据能否缓解</th><th>还缺什么数据</th><th>风险等级</th></tr></thead>
+      <tbody>
+        <tr><td>示例公司</td><td>大客户可能自研</td><td>部分（二供已导入）</td><td>客户认证时间表</td><td style="color:var(--accent3);">中</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:13px; color:var(--text-dim);">*风险等级只能用：低 / 中 / 高 / 证据不足</p>
+
+  <h3>防幻觉检查表</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>可能被夸大的结论</th><th>为什么可能夸大</th><th>谨慎表达方式</th></tr></thead>
+      <tbody>
+        <tr><td>"该公司是唯一供应商"</td><td>仅基于研报，无公告确认</td><td>"据研报描述为重要供应商，待公告确认唯一性"</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- L1-L7 -->
+<section id="l1-l7">
+  <h2><span class="icon">💾</span> L1-L7 数据层（V3.1 增强）</h2>
+  <div class="layer-grid">
+    <div class="layer-card" style="border-left-color: var(--green);">
+      <div class="layer-name">L1 原始痕迹</div>
+      <div class="layer-path">_inbox/*.md</div>
+      <div class="layer-desc">原始素材暂存区</div>
+    </div>
+    <div class="layer-card" style="border-left-color: var(--accent);">
+      <div class="layer-name">L2 原子事实 <span class="v31-tag">V3.1</span></div>
+      <div class="layer-path">L2-facts/[Ticker]-facts.md</div>
+      <div class="layer-desc"><strong>新增证据等级字段</strong>：每条事实标注 A/B/C/D/待核验</div>
+    </div>
+    <div class="layer-card" style="border-left-color: var(--accent5);">
+      <div class="layer-name">L3 身份画像</div>
+      <div class="layer-path">L3-profile/</div>
+      <div class="layer-desc">Sicong + 4 大师大脑（白毛股神内置 L0-L4 框架）</div>
+    </div>
+    <div class="layer-card" style="border-left-color: var(--accent3);">
+      <div class="layer-name">L4 关联网络 <span class="v31-tag">V3.1</span></div>
+      <div class="layer-path">L4-relations/</div>
+      <div class="layer-desc"><strong>新增产业链卡点图谱</strong>：bottleneck-map-[Sector].md</div>
+    </div>
+    <div class="layer-card" style="border-left-color: var(--accent4);">
+      <div class="layer-name">L5 心智判断 <span class="v31-tag">V3.1</span></div>
+      <div class="layer-path">L5-judgments/[Ticker]-judgment.md</div>
+      <div class="layer-desc"><strong>新增研究线索分类</strong> + 底层逻辑三问 + 产业链定位</div>
+    </div>
+    <div class="layer-card" style="border-left-color: var(--yellow);">
+      <div class="layer-name">L6 监控规则 <span class="v31-tag">V3.1</span></div>
+      <div class="layer-path">L6-alerts/[Ticker]-alerts.md</div>
+      <div class="layer-desc"><strong>新增未来两季度跟踪表</strong></div>
+    </div>
+    <div class="layer-card" style="border-left-color: var(--red);">
+      <div class="layer-name">L7 行动记录</div>
+      <div class="layer-path">L7-actions/trades.md</div>
+      <div class="layer-desc">交易记录 + 复盘评价</div>
+    </div>
+  </div>
+</section>
+
+<!-- Agents -->
+<section id="agents">
+  <h2><span class="icon">🧠</span> 7 个 Agent（V3.1 增强）</h2>
+
+  <div class="card" style="border-left: 4px solid var(--green);">
+    <div class="card-title">Agent 1：研究咨询 Agent <span class="v31-tag">V3.1 五段式研究流程</span></div>
+    <ul style="font-size:14px; margin-left:16px;">
+      <li><strong>新增能力</strong>：L0-L4 产业链拆解 · 证据复筛 · 红队证伪 · 防幻觉检查</li>
+      <li><strong>新增 Policy</strong>：证据等级强制 · 无来源不结论 · 研究线索优先 · 公司分类三类标准 · D 级信源例外（老黄/孙哥/特朗普）</li>
+      <li><strong>新增输出</strong>：产业链卡点地图 · 证据表 · 红队表 · 跟踪表 · 防幻觉检查表</li>
+    </ul>
+  </div>
+
+  <div class="card" style="border-left: 4px solid var(--accent);">
+    <div class="card-title">Agent 2：情报分析 Agent <span class="v31-tag">V3.1 证据等级标注</span></div>
+    <ul style="font-size:14px; margin-left:16px;">
+      <li><strong>新增</strong>：舆情数据自动标注证据等级 C/D</li>
+      <li><strong>新增</strong>：特殊信源识别（老黄/孙哥/特朗普发言单独标记）</li>
+    </ul>
+  </div>
+
+  <div class="card" style="border-left: 4px solid var(--accent5);">
+    <div class="card-title">Agent 3：审计委员会 <span class="v31-tag">V3.1 白毛股神 L0-L4 审计</span></div>
+    <ul style="font-size:14px; margin-left:16px;">
+      <li><strong>白毛股神增强</strong>：按 L0-L4 逐层验证产业链拆解准确性</li>
+      <li><strong>新增 Policy</strong>：必须逐层验证 L0-L4，不得跳过 · 公司映射需 ≥ B 级证据</li>
+    </ul>
+  </div>
+
+  <div class="card" style="border-left: 4px solid var(--accent3);">
+    <div class="card-title">Agent 4：IA#1 主提案方 <span class="v31-tag">V3.1 证据等级加权</span></div>
+    <ul style="font-size:14px; margin-left:16px;">
+      <li><strong>新增</strong>：按证据等级加权（A=1.0, B=0.7, C=0.4, D=0.1）</li>
+      <li><strong>新增 Policy</strong>：研究线索"暂不适合"→ HOLD · 无 A 级证据 → 仓位衰减 50%</li>
+    </ul>
+  </div>
+
+  <div class="card" style="border-left: 4px solid var(--red);">
+    <div class="card-title">Agent 5：IA#2 魔鬼代言人 <span class="v31-tag">V3.1 红队 5 问</span></div>
+    <ul style="font-size:14px; margin-left:16px;">
+      <li><strong>新增红队 5 问</strong>：大客户自研？技术替代？价格战？收入来源？充分定价？</li>
+      <li><strong>新增 Policy</strong>：红队 5 问必须全覆盖 · 风险"高/证据不足"→ 降级共识</li>
+    </ul>
+  </div>
+
+  <div class="card" style="border-left: 4px solid var(--accent4);">
+    <div class="card-title">Agent 6：操作分析 Agent</div>
+    <p style="font-size:14px; color:var(--text-dim);">（同 V3，无变化）</p>
+  </div>
+
+  <div class="card" style="border-left: 4px solid var(--yellow);">
+    <div class="card-title">Agent 7：交易执行 Agent</div>
+    <p style="font-size:14px; color:var(--text-dim);">（同 V3，无变化）</p>
+  </div>
+
+  <h3>四级共识等级（V3.1 受证据等级影响）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>等级</th><th>条件</th><th>推送行为</th></tr></thead>
+      <tbody>
+        <tr><td><span class="consensus c-green">🟢 高共识</span></td><td>IA#1 与 IA#2 完全同意，<strong>且核心证据 ≥ A 级</strong></td><td>立即推送，强烈建议执行</td></tr>
+        <tr><td><span class="consensus c-yellow">🟡 有条件共识</span></td><td>同意但附加条件，<strong>或核心证据为 B 级</strong></td><td>推送 + 展示附加条件</td></tr>
+        <tr><td><span class="consensus c-orange">🟠 存在争议</span></td><td>IA#2 有重大异议，<strong>或核心证据仅 C 级</strong></td><td>两方观点同时呈现，Sicong 裁决</td></tr>
+        <tr><td><span class="consensus c-red">🔴 强烈反对</span></td><td>致命缺陷，<strong>或核心证据不足/仅 D 级</strong></td><td>暂不推送，等待新数据窗口</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Guardrails -->
+<section id="guardrails">
+  <h2><span class="icon">🛡️</span> 四道 Guardrails <span class="v31-tag">V3.1 新增第四道</span></h2>
+
+  <div class="guardrail">
+    <div class="guardrail-num g1">1</div>
+    <div><strong>正则溯源校验器</strong><br><span style="font-size:14px; color:var(--text-dim);">匹配 <code>&lt;- [文件#页码]</code>，验证源文件存在。失败 → 重试 1 次，仍失败拦截</span></div>
+  </div>
+  <div class="guardrail">
+    <div class="guardrail-num g2">2</div>
+    <div><strong>交易一致性校验</strong><br><span style="font-size:14px; color:var(--text-dim);">BUY 时 <code>target_price ≤ DCF中性 × 0.85</code>。失败 → 驳回 HOLD</span></div>
+  </div>
+  <div class="guardrail">
+    <div class="guardrail-num g3">3</div>
+    <div><strong>WACC/g 边界断言</strong><br><span style="font-size:14px; color:var(--text-dim);">WACC ∈ [5%, 15%]，g ∈ [0%, 3%]。超范围 → 拦截重算</span></div>
+  </div>
+  <div class="guardrail">
+    <div class="guardrail-num g4">4</div>
+    <div><strong>防幻觉检查 <span class="v31-tag">V3.1 新增</span></strong><br>
+    <span style="font-size:14px; color:var(--text-dim);">
+      ① 无来源结论拦截（必须标"待核验"）<br>
+      ② D 级信源当结论拦截（老黄/孙哥/特朗普除外）<br>
+      ③ 研报热度当业绩证据拦截<br>
+      ④ 公司分类非三类标准拦截
+    </span></div>
+  </div>
+</section>
+
+<!-- 工作流 -->
+<section id="workflow">
+  <h2><span class="icon">🔄</span> 双循环工作流（V3.1 增强慢循环）</h2>
+
+  <div class="card" style="border-left: 4px solid var(--green);">
+    <div class="card-title" style="color:var(--green);">⚡ 快循环 System 1（V3.1 增强防幻觉轻量检查）</div>
+    <p style="font-size:14px;">用户提问 → RAG 检索（按证据等级排序）→ Agent 1/7 → <strong>V3.1：防幻觉轻量检查</strong> → 直接回答</p>
+  </div>
+
+  <div class="card" style="border-left: 4px solid var(--accent3);">
+    <div class="card-title" style="color:var(--accent3);">🌙 慢循环 System 2（V3.1 五段式研究流程）</div>
+    <div class="flow" style="margin-top:12px;">
+      <div class="flow-step">1. 候选股发现（LLM 判断）</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">2. 情绪抓取 (Agent 2) <span style="color:var(--text-dim);">+ 证据等级标注</span></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step" style="border-color:var(--accent4);"><strong>V3.1 五段式研究 (Agent 1)</strong>：产业链拆解 → 证据复筛 → 红队证伪 → 防幻觉检查 → DCF 估值</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">3. Guardrail 第一道（溯源）+ <strong>V3.1 第四道（防幻觉）</strong></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">4. L2 落盘 + L5 提案（含研究线索分类）</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">5. 审计委员会 (Agent 3) <strong>V3.1：L0-L4 逐层审计</strong></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">6. IA#1 (Agent 4) <strong>V3.1：证据等级加权</strong></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">7. IA#2 (Agent 5) <strong>V3.1：红队 5 问</strong></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">8. Guardrail 第二道（一致性）+ 第三道（WACC/g）</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">9. 共识判定 <strong>V3.1：受证据等级影响</strong> → 推送/拦截</div>
+    </div>
+  </div>
+</section>
+
+<!-- 版本对照 -->
+<section id="diff">
+  <h2><span class="icon">📋</span> 版本演进对照</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>维度</th><th>V1.5</th><th>V2</th><th>V3</th><th>V3.1</th></tr></thead>
+      <tbody>
+        <tr><td><strong>架构</strong></td><td>6 Agent</td><td>三层</td><td>同心圆+双循环</td><td><strong>+ 产业链方法论</strong></td></tr>
+        <tr><td><strong>Agent</strong></td><td>6</td><td>5</td><td>7</td><td>7</td></tr>
+        <tr><td><strong>研究方法论</strong></td><td>无</td><td>无</td><td>无</td><td><strong>五段式</strong></td></tr>
+        <tr><td><strong>证据等级</strong></td><td>无</td><td>无</td><td>无</td><td><strong>A/B/C/D</strong></td></tr>
+        <tr><td><strong>产业链拆解</strong></td><td>无</td><td>无</td><td>无</td><td><strong>L0-L4</strong></td></tr>
+        <tr><td><strong>公司分类</strong></td><td>无</td><td>无</td><td>无</td><td><strong>三类标准</strong></td></tr>
+        <tr><td><strong>研究目标</strong></td><td>投资建议</td><td>投资建议</td><td>投资建议</td><td><strong>研究线索优先</strong></td></tr>
+        <tr><td><strong>防幻觉</strong></td><td>无</td><td>溯源</td><td>溯源</td><td><strong>+ 第四道 Guardrail</strong></td></tr>
+        <tr><td><strong>红队证伪</strong></td><td>无</td><td>无</td><td>IA#2 反驳</td><td><strong>+ 红队 5 问</strong></td></tr>
+        <tr><td><strong>特殊信源</strong></td><td>无</td><td>无</td><td>无</td><td><strong>老黄/孙哥/特朗普</strong></td></tr>
+        <tr><td><strong>Guardrails</strong></td><td>无</td><td>3 道</td><td>3 道</td><td><strong>4 道</strong></td></tr>
+        <tr><td><strong>共识门禁</strong></td><td>4 级</td><td>简化</td><td>4 级</td><td><strong>+ 证据等级影响</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</div>
+
+<div class="footer">
+  <p>投资研究 AI 系统规格说明书 V3.1 · 2026-06-18 · 同心圆三层 + 双循环 + L1-L7 + 产业链卡点研究方法论</p>
+</div>
+
+</body>
+</html>

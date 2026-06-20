@@ -1,0 +1,1790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票投研 Agent 系统设计规范</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a2234;
+            --bg-hover: #243044;
+            --border: #2a3548;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-orange: #f97316;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --gradient-1: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            --gradient-2: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+            --gradient-3: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+            --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: var(--bg-primary);
+            overflow: hidden;
+        }
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle at 20% 30%, rgba(59,130,246,0.08) 0%, transparent 40%),
+                        radial-gradient(circle at 80% 70%, rgba(139,92,246,0.06) 0%, transparent 40%),
+                        radial-gradient(circle at 50% 50%, rgba(6,182,212,0.05) 0%, transparent 40%);
+            animation: float 20s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            33% { transform: translate(-30px, 30px); }
+            66% { transform: translate(30px, -30px); }
+        }
+
+        .container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+        /* Hero Header */
+        .hero {
+            min-height: 60vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 80px 24px;
+            position: relative;
+        }
+        .hero-content { z-index: 1; }
+        .hero h1 {
+            font-size: 3.5em;
+            font-weight: 800;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
+        }
+        .hero .subtitle {
+            font-size: 1.3em;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+        .hero-badges {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .hero-badge {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            padding: 8px 20px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            transition: all 0.3s;
+        }
+        .hero-badge:hover { border-color: var(--accent-blue); color: var(--accent-blue); transform: translateY(-2px); }
+        .hero-badge.green { border-color: var(--accent-green); color: var(--accent-green); }
+        .hero-badge.blue { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .hero-badge.purple { border-color: var(--accent-purple); color: var(--accent-purple); }
+
+        /* Sticky Nav */
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 14, 26, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 0;
+        }
+        .nav-inner {
+            display: flex;
+            gap: 4px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .nav-inner::-webkit-scrollbar { display: none; }
+        .nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.82em;
+            padding: 6px 14px;
+            border-radius: 8px;
+            white-space: nowrap;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .nav a:hover, .nav a.active {
+            color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Section */
+        .section {
+            padding: 64px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .section-header { margin-bottom: 40px; }
+        .section-number {
+            display: inline-block;
+            font-size: 0.8em;
+            font-weight: 700;
+            color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+            padding: 4px 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        .section h2 {
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .section h3 {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            margin: 32px 0 16px 0;
+        }
+        .section h4 {
+            font-size: 1.15em;
+            font-weight: 600;
+            color: var(--accent-yellow);
+            margin: 24px 0 12px 0;
+        }
+        .section p { margin-bottom: 16px; color: var(--text-secondary); }
+        .section ul, .section ol { margin-left: 24px; margin-bottom: 16px; color: var(--text-secondary); }
+        .section li { margin-bottom: 8px; }
+
+        /* Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 24px 0;
+        }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--gradient-1);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-glow);
+        }
+        .card:hover::before { opacity: 1; }
+        .card .icon {
+            font-size: 2em;
+            margin-bottom: 12px;
+            display: block;
+        }
+        .card h4 { margin-top: 0; color: var(--text-primary); }
+        .card p { font-size: 0.9em; margin-bottom: 0; }
+
+        .card.blue::before { background: var(--gradient-1); }
+        .card.green::before { background: var(--gradient-3); }
+        .card.purple::before { background: var(--gradient-2); }
+        .card.orange::before { background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); }
+        .card.red::before { background: linear-gradient(135deg, #ef4444 0%, #f97316 100%); }
+
+        /* Table */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        th {
+            background: var(--bg-secondary);
+            color: var(--accent-cyan);
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: var(--bg-hover); }
+
+        /* Code */
+        pre {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.85em;
+        }
+        pre code { color: var(--text-primary); line-height: 1.6; }
+        :not(pre) > code {
+            background: var(--bg-card);
+            padding: 2px 8px;
+            border-radius: 6px;
+            color: var(--accent-orange);
+            font-size: 0.85em;
+        }
+
+        /* Mermaid */
+        .mermaid {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            margin: 24px 0;
+            text-align: center;
+            overflow-x: auto;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin: 20px 0;
+            border-bottom: 2px solid var(--border);
+        }
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+        .tab:hover { color: var(--text-primary); }
+        .tab.active {
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        .badge.green { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+        .badge.yellow { background: rgba(245,158,11,0.15); color: var(--accent-yellow); }
+        .badge.orange { background: rgba(249,115,22,0.15); color: var(--accent-orange); }
+        .badge.red { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+        .badge.blue { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+        .badge.purple { background: rgba(139,92,246,0.15); color: var(--accent-purple); }
+
+        /* Highlight box */
+        .highlight {
+            background: var(--bg-card);
+            border-left: 4px solid var(--accent-blue);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 20px 0;
+        }
+        .highlight.green { border-color: var(--accent-green); }
+        .highlight.yellow { border-color: var(--accent-yellow); }
+        .highlight.red { border-color: var(--accent-red); }
+        .highlight.purple { border-color: var(--accent-purple); }
+
+        /* Collapsible */
+        .collapsible {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin: 12px 0;
+            overflow: hidden;
+        }
+        .collapsible-header {
+            padding: 16px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: background 0.2s;
+        }
+        .collapsible-header:hover { background: var(--bg-hover); }
+        .collapsible-header .chevron { transition: transform 0.3s; color: var(--text-muted); }
+        .collapsible.open .chevron { transform: rotate(90deg); }
+        .collapsible-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .collapsible.open .collapsible-body { max-height: 5000px; }
+        .collapsible-body-inner { padding: 0 20px 20px; }
+
+        /* Stat cards */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+        .stat {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+        .stat .num {
+            font-size: 2.5em;
+            font-weight: 800;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat .label { color: var(--text-muted); font-size: 0.85em; margin-top: 4px; }
+
+        /* Consensus selector */
+        .consensus-selector {
+            display: flex;
+            gap: 8px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+        .consensus-item {
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid var(--border);
+            background: var(--bg-card);
+        }
+        .consensus-item:hover { transform: translateY(-2px); }
+        .consensus-item.selected { box-shadow: var(--shadow-glow); }
+        .consensus-item .emoji { font-size: 1.5em; }
+        .consensus-item .name { font-weight: 600; margin-top: 4px; }
+        .consensus-item .desc { font-size: 0.8em; color: var(--text-muted); margin-top: 2px; }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+        }
+
+        /* Scroll reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+
+        /* Agent flow special */
+        .agent-flow-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .agent-node {
+            background: var(--bg-secondary);
+            border: 2px solid var(--accent-blue);
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            min-width: 160px;
+            transition: all 0.3s;
+        }
+        .agent-node:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-glow);
+        }
+        .agent-node .num { font-size: 1.8em; font-weight: 800; color: var(--accent-blue); }
+        .agent-node .name { color: var(--text-primary); font-weight: 600; margin-top: 4px; }
+        .agent-node .desc { color: var(--text-muted); font-size: 0.8em; margin-top: 2px; }
+        .agent-arrow { color: var(--text-muted); font-size: 1.5em; }
+    </style>
+</head>
+<body>
+
+<div class="bg-animation"></div>
+
+<!-- Hero -->
+<div class="hero">
+    <div class="hero-content">
+        <h1>股票投研 Agent<br>系统设计规范</h1>
+        <div class="subtitle">同心圆三层 · 双循环 · Market Adapter · CoT 自我辩论 · 快速反馈循环</div>
+        <div class="hero-badges">
+            <span class="hero-badge green">Proposed</span>
+            <span class="hero-badge blue">美股 + A股</span>
+            <span class="hero-badge purple">4 Agent 架构</span>
+            <span class="hero-badge">2026-06-18</span>
+        </div>
+    </div>
+</div>
+
+<!-- Nav -->
+<nav class="nav">
+    <div class="container">
+        <div class="nav-inner">
+            <a href="#s1" class="nav-link">系统概述</a>
+            <a href="#s2" class="nav-link">架构总览</a>
+            <a href="#s3" class="nav-link">L1-L7 数据层</a>
+            <a href="#s4" class="nav-link">Market Adapter</a>
+            <a href="#s5" class="nav-link">Prompt 层</a>
+            <a href="#s6" class="nav-link">Context 层</a>
+            <a href="#s7" class="nav-link">Harness 层</a>
+            <a href="#s8" class="nav-link">业务生命周期</a>
+            <a href="#s9" class="nav-link">决策质量鱼骨图</a>
+            <a href="#s10" class="nav-link">强纠错保护</a>
+            <a href="#s11" class="nav-link">确认门禁</a>
+            <a href="#s13" class="nav-link">数据源</a>
+            <a href="#s14" class="nav-link">测试方案</a>
+            <a href="#s15" class="nav-link">回测模式</a>
+            <a href="#s16" class="nav-link">策略修正</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+
+    <!-- Section 1 -->
+    <div class="section reveal" id="s1">
+        <div class="section-header">
+            <span class="section-number">01</span>
+            <h2>系统概述</h2>
+        </div>
+
+        <h3>设计目标</h3>
+        <div class="card-grid">
+            <div class="card blue">
+                <span class="icon">🎯</span>
+                <h4>全生命周期投资建议</h4>
+                <p>从选股到买入到持仓监控到卖出，覆盖完整投资闭环</p>
+            </div>
+            <div class="card green">
+                <span class="icon">🔗</span>
+                <h4>产业链深度研究</h4>
+                <p>通过 C0-C4 五层产业链拆解，找到真正的卡脖子环节</p>
+            </div>
+            <div class="card purple">
+                <span class="icon">📊</span>
+                <h4>证据驱动决策</h4>
+                <p>所有事实标注证据等级（A/B/C/D），杜绝无来源结论</p>
+            </div>
+            <div class="card orange">
+                <span class="icon">⚔️</span>
+                <h4>自我辩论共识</h4>
+                <p>单 Agent 通过 CoT 正反双方辩论，达成共识后才推送建议</p>
+            </div>
+            <div class="card blue">
+                <span class="icon">🔄</span>
+                <h4>快速反馈学习</h4>
+                <p>拒绝原因即时回写 Context，系统从每次错误中学习</p>
+            </div>
+            <div class="card green">
+                <span class="icon">🌐</span>
+                <h4>双市场适配</h4>
+                <p>美股 + A 股，一套核心逻辑 + 两套市场配置</p>
+            </div>
+        </div>
+
+        <h3>核心设计原则</h3>
+        <div class="stats">
+            <div class="stat"><div class="num">80%</div><div class="label">Context 层投入</div></div>
+            <div class="stat"><div class="num">15%</div><div class="label">Prompt 层投入</div></div>
+            <div class="stat"><div class="num">5%</div><div class="label">Guardrails 投入</div></div>
+            <div class="stat"><div class="num">4</div><div class="label">Agent 数量</div></div>
+        </div>
+    </div>
+
+    <!-- Section 2 -->
+    <div class="section reveal" id="s2">
+        <div class="section-header">
+            <span class="section-number">02</span>
+            <h2>架构总览</h2>
+        </div>
+
+        <h3>同心圆三层架构</h3>
+        <div class="mermaid">
+flowchart TB
+    subgraph harness["🔧 Harness 层（外层·运行保障）"]
+        direction LR
+        H1["快循环 每日"]
+        H2["慢循环 每周"]
+        H3["Guardrails"]
+        H4["富途 MCP"]
+    end
+    subgraph context["📦 Context 层（中层·信息供给）"]
+        direction LR
+        C1["RAG 检索"]
+        C2["混合 Re-rank"]
+        C3["上下文装配"]
+        C4["快速反馈循环"]
+    end
+    subgraph prompt["💡 Prompt 层（内层·指令设计）"]
+        direction LR
+        P1["Agent 1 研究"]
+        P2["Agent 2 决策"]
+        P3["Agent 3 反思"]
+        P4["Agent 4 执行"]
+    end
+    subgraph adapter["🌐 Market Adapter 层"]
+        direction LR
+        A1["US Adapter"]
+        A2["CN Adapter"]
+    end
+    subgraph data["💾 L1-L7 数据层"]
+        direction LR
+        D1["L1-L3"]
+        D2["L4-L7"]
+    end
+    harness --> context
+    context --> prompt
+    prompt --> adapter
+    adapter --> data
+        </div>
+
+        <h3>双循环设计</h3>
+        <div class="mermaid">
+flowchart LR
+    subgraph fast["⚡ 快循环（每日）"]
+        F1["盘前盘后定时"] --> F2["行情扫描"]
+        F2 --> F3["持仓监控"]
+        F3 --> F4["异动预警"]
+        F4 --> F5{"触发慢循环?"}
+        F5 -- 否 --> F6["每日早报"]
+        F5 -- 是 --> S1
+    end
+    subgraph slow["🔄 慢循环（每周/触发）"]
+        S1["候选筛选"] --> S2["Agent 1 五段式研究"]
+        S2 --> S3["Agent 2 CoT辩论"]
+        S3 --> S4["Guardrails"]
+        S4 --> S5{"Sicong确认?"}
+        S5 -- 确认 --> S6["Agent 4 执行"]
+        S5 -- 拒绝 --> S7["Agent 3 拒绝分析"]
+        S7 --> S8["回写Context"]
+    end
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <tr><th>循环</th><th>频率</th><th>触发条件</th><th>核心流程</th></tr>
+                <tr><td><strong>快循环</strong></td><td>每日</td><td>定时（盘前/盘后）</td><td>行情扫描 → 持仓监控 → L6 阈值检查 → 异动预警</td></tr>
+                <tr><td><strong>慢循环</strong></td><td>每周/触发式</td><td>快循环触发 / Sicong 请求 / 财报发布</td><td>候选筛选 → 研究分析 → 决策辩论 → Guardrails → Sicong 确认 → 执行</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 3 -->
+    <div class="section reveal" id="s3">
+        <div class="section-header">
+            <span class="section-number">03</span>
+            <h2>L1-L7 数据层</h2>
+        </div>
+
+        <h3>七层记忆架构</h3>
+        <div class="mermaid">
+flowchart LR
+    L1["L1 原始痕迹<br/>财报PDF/公告原文"] --> L2["L2 原子事实<br/>财务因子+证据等级"]
+    L2 --> L3["L3 认知画像<br/>Sicong+5大脑+市场画像"]
+    L3 --> L4["L4 关联网络<br/>宏观乘数+产业链卡点图谱"]
+    L4 --> L5["L5 心智判断<br/>投资建议+估值+假设"]
+    L5 --> L6["L6 监控规则<br/>阈值+假设红线+跟踪表"]
+    L6 --> L7["L7 行动历史<br/>操作日志+拒绝原因+纪律评分"]
+    L7 -.->|"反馈循环"| L2
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <tr><th>层级</th><th>定位</th><th>数据载体</th><th>关键字段</th></tr>
+                <tr><td><strong>L1</strong></td><td>原始痕迹层</td><td>财报 PDF 切片、K线数据、公告原文</td><td>source, date, market</td></tr>
+                <tr><td><strong>L2</strong></td><td>原子事实层</td><td>标准财务因子、宏观指标</td><td><span class="badge green">evidence_level</span></td></tr>
+                <tr><td><strong>L3</strong></td><td>认知画像层</td><td>sicong.md + 5 大脑 + 市场画像</td><td><span class="badge green">market-us/cn.md</span></td></tr>
+                <tr><td><strong>L4</strong></td><td>关联网络层</td><td>宏观乘数、供应链图谱</td><td><span class="badge green">bottleneck_map</span></td></tr>
+                <tr><td><strong>L5</strong></td><td>心智与价值判断</td><td>投资建议、估值、假设</td><td><span class="badge green">logic_3q, c0_c4</span></td></tr>
+                <tr><td><strong>L6</strong></td><td>监控与规则触发</td><td>估值偏离阈值、假设红线</td><td><span class="badge green">tracking_table</span></td></tr>
+                <tr><td><strong>L7</strong></td><td>行动与交易历史</td><td>操作日志、复盘评价</td><td><span class="badge green">rejection_reason</span></td></tr>
+            </table>
+        </div>
+
+        <div class="collapsible">
+            <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                <span>📄 L2 原子事实格式示例</span>
+                <span class="chevron">▶</span>
+            </div>
+            <div class="collapsible-body">
+                <div class="collapsible-body-inner">
+                    <pre><code>### 事实条目
+- 内容: 2025Q4 营收 50.2 亿美元，同比 +18.3%
+- 证据等级: A
+- 来源: [2025年报#P12](file:///vault/L1_raw/AAPL/2025-annual-report.pdf#P12)
+- 日期: 2026-02-15
+- market: US</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="collapsible">
+            <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                <span>📄 L7 操作记录格式示例</span>
+                <span class="chevron">▶</span>
+            </div>
+            <div class="collapsible-body">
+                <div class="collapsible-body-inner">
+                    <pre><code># 操作记录 AAPL-BUY-2026-06-18
+
+## 基本信息
+- 操作类型: 买入
+- 标的: AAPL  价格: $148  数量: 100股  仓位占比: 8%
+- 共识等级: 🟡 有条件共识
+
+## 拒绝原因记录
+- 日期: 2026-06-10
+- 拒绝提案: 买入 NVDA
+- 拒绝原因: "估值过于乐观，WACC 假设不合理"
+- 回写 Context: ✅ 已注入下次 NVDA 分析的 Context</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 4 -->
+    <div class="section reveal" id="s4">
+        <div class="section-header">
+            <span class="section-number">04</span>
+            <h2>Market Adapter 层</h2>
+        </div>
+
+        <h3>架构设计</h3>
+        <div class="mermaid">
+flowchart TB
+    subgraph core["核心层（一套，市场无关）"]
+        direction LR
+        RA["research_agent"]
+        DA["decision_agent"]
+        OA["reflection_agent"]
+        EA["execute_agent"]
+    end
+    subgraph config["配置层（两套）"]
+        direction LR
+        CU["market-us.yaml"]
+        CC["market-cn.yaml"]
+    end
+    subgraph adapters["适配器层（两套）"]
+        direction LR
+        subgraph us["US 适配器"]
+            DU["data_us.py<br/>SEC EDGAR"]
+            TU["trading_us.py<br/>T+0"]
+        end
+        subgraph cn["CN 适配器"]
+            DC["data_cn.py<br/>巨潮/东方财富"]
+            TC["trading_cn.py<br/>T+1 涨跌停"]
+        end
+    end
+    core --> config
+    config --> adapters
+        </div>
+
+        <div class="highlight">
+            <strong>设计原则</strong>：90% 逻辑共享，改一次两个市场都生效。10% 不同的部分用配置 + 适配器处理。
+        </div>
+
+        <h3>市场配置对比</h3>
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab(this, 'us-config')">🇺🇸 美股 (US)</div>
+            <div class="tab" onclick="switchTab(this, 'cn-config')">🇨🇳 A 股 (CN)</div>
+        </div>
+
+        <div id="us-config" class="tab-content active">
+            <pre><code># config/market-us.yaml
+market: US
+accounting_standard: US_GAAP
+currency: USD
+settlement: T+0
+daily_limit: none
+short_selling: allowed
+valuation_preference:
+  primary: DCF
+  secondary: PEG
+  policy_premium: low
+key_metrics: [EPS, FCF, Revenue_Growth, PEG, P_E]
+data_sources:
+  filings: SEC_EDGAR
+  market_data: Yahoo_Finance
+  holdings: 13F
+  earnings_call: Seeking_Alpha
+narrative_leaders:
+  - name: "黄仁勋"
+    alias: ["老黄", "Jensen"]
+    narrative: "AI算力/GPU/芯片"
+  - name: "孙宇晨"
+    alias: ["孙哥", "Justin Sun"]
+    narrative: "加密货币/叙事炒作"
+  - name: "特朗普"
+    alias: ["Trump"]
+    narrative: "政策/宏观/地缘政治"</code></pre>
+        </div>
+
+        <div id="cn-config" class="tab-content">
+            <pre><code># config/market-cn.yaml
+market: CN
+accounting_standard: China_ASBE
+currency: CNY
+settlement: T+1
+daily_limit:
+  main_board: 0.10
+  star_board: 0.20
+  chinext: 0.20
+short_selling: restricted
+valuation_preference:
+  primary: PE_Band
+  secondary: PB_Band
+  policy_premium: high
+key_metrics: [营收增速, 净利润, ROE, 毛利率, 北向资金, 融资融券]
+data_sources:
+  filings: CNINFO
+  market_data: EastMoney
+  holdings: Northbound_Capital
+  earnings_call: 调研纪要
+special_rules:
+  - 涨停板策略: 连板股特殊处理
+  - 龙虎榜: 机构席位追踪
+  - 北向资金: 外资流向监控
+  - 限售解禁: 解禁日期预警
+  - T1卖出限制: 当日买入不可卖出
+narrative_leaders:
+  - name: "黄仁勋"
+    alias: ["老黄", "Jensen"]
+    narrative: "AI算力/GPU/芯片"
+  - name: "孙宇晨"
+    alias: ["孙哥", "Justin Sun"]
+    narrative: "加密货币/叙事炒作"
+  - name: "特朗普"
+    alias: ["Trump"]
+    narrative: "政策/宏观/地缘政治"</code></pre>
+        </div>
+
+        <h3>市场差异对比</h3>
+        <div class="table-wrap">
+            <table>
+                <tr><th>配置项</th><th>🇺🇸 美股 (US)</th><th>🇨🇳 A 股 (CN)</th></tr>
+                <tr><td>会计准则</td><td>US GAAP</td><td>China ASBE</td></tr>
+                <tr><td>交易制度</td><td>T+0</td><td>T+1</td></tr>
+                <tr><td>涨跌停</td><td>无</td><td>主板 ±10% / 科创创业 ±20%</td></tr>
+                <tr><td>做空</td><td>允许</td><td>受限（融券难）</td></tr>
+                <tr><td>估值偏好</td><td>DCF + PEG</td><td>PE-Band + PB-Band</td></tr>
+                <tr><td>政策溢价</td><td>低</td><td>高</td></tr>
+                <tr><td>公告源</td><td>SEC EDGAR</td><td>巨潮资讯网</td></tr>
+                <tr><td>行情源</td><td>Yahoo Finance</td><td>东方财富</td></tr>
+                <tr><td>持仓源</td><td>13F</td><td>北向资金 / 融资融券</td></tr>
+                <tr><td>特殊规则</td><td>无</td><td>涨停板 / 龙虎榜 / 限售解禁</td></tr>
+            </table>
+        </div>
+
+        <h3>叙事领袖机制</h3>
+        <div class="highlight purple">
+            叙事领袖不硬编码，改为配置驱动。其公开发言虽属 D 级信源（社交媒体），但市场影响力足够大，可作线索参考。
+        </div>
+        <div class="card-grid">
+            <div class="card purple">
+                <h4>黄仁勋（老黄）</h4>
+                <p>AI 算力 / GPU / 芯片叙事</p>
+                <span class="badge yellow">D 级 → 可作线索</span>
+            </div>
+            <div class="card purple">
+                <h4>孙宇晨（孙哥）</h4>
+                <p>加密货币 / 叙事炒作 / FOMO 信号</p>
+                <span class="badge yellow">D 级 → 可作线索</span>
+            </div>
+            <div class="card purple">
+                <h4>特朗普（Trump）</h4>
+                <p>政策 / 宏观 / 地缘政治叙事</p>
+                <span class="badge yellow">D 级 → 可作线索</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 5 -->
+    <div class="section reveal" id="s5">
+        <div class="section-header">
+            <span class="section-number">05</span>
+            <h2>Prompt 层 — 4 个 Agent</h2>
+        </div>
+
+        <h3>Agent 总览</h3>
+        <div class="agent-flow-card">
+            <div class="agent-node">
+                <div class="num">1</div>
+                <div class="name">研究分析</div>
+                <div class="desc">漏斗式筛选</div>
+            </div>
+            <span class="agent-arrow">→</span>
+            <div class="agent-node">
+                <div class="num">2</div>
+                <div class="name">决策</div>
+                <div class="desc">CoT 自我辩论</div>
+            </div>
+            <span class="agent-arrow">→</span>
+            <div class="agent-node">
+                <div class="num">3</div>
+                <div class="name">操作分析</div>
+                <div class="desc">反思 + 纪律</div>
+            </div>
+            <span class="agent-arrow">→</span>
+            <div class="agent-node">
+                <div class="num">4</div>
+                <div class="name">交易执行</div>
+                <div class="desc">富途 MCP</div>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <tr><th>#</th><th>Agent</th><th>职责</th><th>模型</th></tr>
+                <tr><td><strong>1</strong></td><td>研究分析 Agent</td><td>漏斗式研究：产业链筛选 → 公司初筛 → 深入研究（五段式仅对有价值公司执行）</td><td>Claude 3.5 Sonnet</td></tr>
+                <tr><td><strong>2</strong></td><td>决策 Agent</td><td>CoT 自我辩论（正方→反方→综合），输出投资建议 + 共识等级</td><td>Claude 3.5 Sonnet</td></tr>
+                <tr><td><strong>3</strong></td><td>操作分析 Agent</td><td>操作纪律评分、复盘总结、拒绝原因分析</td><td>Claude 3.5 Sonnet</td></tr>
+                <tr><td><strong>4</strong></td><td>交易执行 Agent</td><td>富途 MCP 下单、持仓同步、T+1/涨跌停检查</td><td>Python + 富途 MCP</td></tr>
+            </table>
+        </div>
+
+        <h3>Agent 1: 漏斗式研究流程</h3>
+        <div class="mermaid">
+flowchart TD
+    MARKET["全市场扫描"] --> L1
+    subgraph L1["第一层：产业链筛选（不分析具体公司）"]
+        L1A["C0 终端需求"] --> L1B["C1 系统集成"]
+        L1B --> L1C["C2 核心部件"]
+        L1C --> L1D["C3 材料工艺"]
+        L1D --> L1E["C4 上游资源"]
+        L1E --> L1F["输出 10-20 个有潜力的产业链"]
+    end
+    L1 --> L2
+    subgraph L2["第二层：公司初筛"]
+        L2A["找候选公司"] --> L2B["业务纯度检查"]
+        L2B --> L2C["标注证据等级"]
+        L2C --> L2D["重点线索/观察线索/暂不适合"]
+    end
+    L2 --> L3
+    subgraph L3["第三层：深入研究（仅对重点线索）"]
+        L3A["五段式研究"] --> L3B["证据复筛"]
+        L3B --> L3C["红队证伪"]
+        L3C --> L3D["防幻觉检查"]
+        L3D --> L3E["综合判断+估值"]
+        L3E --> L3F["L5 投资建议草案"]
+    end
+        </div>
+
+        <div class="highlight green">
+            <strong>关键设计</strong>：五段式不是对每个股票都跑，而是漏斗的最后一层——只对通过产业链筛选和公司初筛的有价值公司执行。前两层是筛选过程，第三层才是深入研究。
+        </div>
+
+        <h3>Agent 2: CoT 自我辩论流程</h3>
+        <div class="mermaid">
+flowchart TD
+    INPUT["L5 草案 + Sicong 画像 + 历史拒绝原因"] --> STEP1
+    subgraph STEP1["第一步：正方论证 IA#1"]
+        P1["投资逻辑成立?"] --> P2["安全边际?"]
+        P2 --> P3["时机合适?"]
+        P3 --> P4["画像匹配?"]
+    end
+    STEP1 --> STEP2
+    subgraph STEP2["第二步：反方反驳 IA#2"]
+        R1["假设成立?"] --> R2["白毛股神: 真卡脖子?"]
+        R2 --> R3["孙宇晨: 叙事泡沫?"]
+        R3 --> R4["历史盲区冲突?"]
+        R4 --> R5["至少3个实质性反驳"]
+    end
+    STEP2 --> STEP3
+    subgraph STEP3["第三步：综合判断"]
+        J1["共识等级判定"] --> J2["最终建议"]
+        J2 --> J3["仓位调整+风险提示"]
+    end
+        </div>
+
+        <div class="highlight green">
+            <strong>关键设计</strong>：单 Agent CoT 自我辩论替代双 IA 分 Agent。同一个 Agent 在完整上下文中"先正方再反方再综合"，零信息损失。
+        </div>
+
+        <h3>共识等级（点击查看详情）</h3>
+        <div class="consensus-selector">
+            <div class="consensus-item selected" style="border-color: var(--accent-green);" onclick="selectConsensus(this, 0)">
+                <div class="emoji">🟢</div>
+                <div class="name">高共识</div>
+                <div class="desc">立即推送</div>
+            </div>
+            <div class="consensus-item" style="border-color: var(--accent-yellow);" onclick="selectConsensus(this, 1)">
+                <div class="emoji">🟡</div>
+                <div class="name">有条件共识</div>
+                <div class="desc">推送+附加条件</div>
+            </div>
+            <div class="consensus-item" style="border-color: var(--accent-orange);" onclick="selectConsensus(this, 2)">
+                <div class="emoji">🟠</div>
+                <div class="name">存在争议</div>
+                <div class="desc">Sicong 裁决</div>
+            </div>
+            <div class="consensus-item" style="border-color: var(--accent-red);" onclick="selectConsensus(this, 3)">
+                <div class="emoji">🔴</div>
+                <div class="name">强烈反对</div>
+                <div class="desc">拦截待观望</div>
+            </div>
+        </div>
+        <div id="consensus-detail" class="highlight">
+            <strong>🟢 高共识</strong>：正方论证充分，反方无法提出实质性反驳。立即推送，强烈建议执行。标签：<code>强推</code>
+        </div>
+    </div>
+
+    <!-- Section 6 -->
+    <div class="section reveal" id="s6">
+        <div class="section-header">
+            <span class="section-number">06</span>
+            <h2>Context 层 — RAG 检索与上下文装配</h2>
+        </div>
+
+        <h3>RAG 检索流程</h3>
+        <div class="mermaid">
+flowchart TD
+    Q["分析请求"] --> V["向量检索 ChromaDB"]
+    Q --> S["结构化查询 SQLite"]
+    V --> R["混合 Re-rank Gemini Flash"]
+    S --> R
+    R --> ASM["上下文装配矩阵"]
+    ASM --> LC["长度控制 Tier 1/2/3"]
+    LC --> INJ["注入 Prompt"]
+        </div>
+
+        <h3>上下文装配矩阵</h3>
+        <div class="table-wrap">
+            <table>
+                <tr><th>场景</th><th>注入内容</th><th>长度预算</th></tr>
+                <tr><td>深度研究</td><td>L2 全部事实 + L4 产业链图谱 + L3 画像 + L7 历史 + L5 拒绝原因</td><td><span class="badge blue">100K tokens</span></td></tr>
+                <tr><td>实时咨询</td><td>L2 核心事实 + L5 当前估值 + L6 当前假设 + L3 画像</td><td><span class="badge blue">30K tokens</span></td></tr>
+                <tr><td>持仓监控</td><td>L6 阈值 + L2 最新事实 + 实时行情</td><td><span class="badge blue">10K tokens</span></td></tr>
+                <tr><td>趋势预测</td><td>L2 历史因子 + L4 宏观乘数 + L3 大佬画像</td><td><span class="badge blue">20K tokens</span></td></tr>
+            </table>
+        </div>
+
+        <h3>快速反馈循环</h3>
+        <div class="mermaid">
+flowchart LR
+    A2["Agent 2 输出建议"] --> SC{"Sicong 确认?"}
+    SC -- 确认 --> EX["Agent 4 执行"]
+    SC -- 拒绝 --> A3["Agent 3 分析拒绝原因"]
+    A3 --> RW["拒绝原因回写 Context"]
+    RW --> NXT["下次分析注入拒绝原因"]
+    NXT --> A1["Agent 1 研究分析"]
+        </div>
+
+        <div class="highlight yellow">
+            <strong>最重要的学习机制</strong>：每次拒绝都让系统变得更聪明，比任何 Guardrails 都有效。下次同类标的分析时注入："上次建议买入 XXX，Sicong 拒绝了，原因是 '{reason}'。本次请注意避免类似问题。"
+        </div>
+
+        <h3>证据等级标注</h3>
+        <div class="highlight">
+            <strong>初版不设任何软引导</strong>，完全交给 LLM 判断。保留配置入口 <code>evidence_weights.yaml</code> 供后期添加（初版 <code>enabled: false</code>）。
+        </div>
+        <div class="card-grid">
+            <div class="card green">
+                <h4><span class="badge green">A 级</span> 公告 / 年报</h4>
+                <p>核心证据，可直接作结论</p>
+            </div>
+            <div class="card blue">
+                <h4><span class="badge blue">B 级</span> 调研 / 管理层交流</h4>
+                <p>辅助判断，需交叉验证</p>
+            </div>
+            <div class="card yellow">
+                <h4><span class="badge yellow">C 级</span> 研报 / 媒体</h4>
+                <p>仅参考，需 A/B 级支撑</p>
+            </div>
+            <div class="card red">
+                <h4><span class="badge red">D 级</span> 社交媒体</h4>
+                <p>仅线索，不能作结论（叙事领袖除外）</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 7 -->
+    <div class="section reveal" id="s7">
+        <div class="section-header">
+            <span class="section-number">07</span>
+            <h2>Harness 层 — 工作流·Guardrails</h2>
+        </div>
+
+        <h3>Guardrails 分级</h3>
+        <div class="mermaid">
+flowchart TD
+    OUT["Agent 输出"] --> G1
+    subgraph G1["第一道：溯源校验"]
+        G1A{"引用匹配?"} -- 否 --> G1B["软警告 标注待核验"]
+        G1A -- 是 --> G2
+        G1B --> G2
+    end
+    subgraph G2["第二道：WACC/g 边界"]
+        G2A{"WACC 8-12% g 0-3%?"} -- 否 --> G2B["软警告 估值参数偏离"]
+        G2A -- 是 --> G3
+        G2B --> G3
+    end
+    subgraph G3["第三道：防幻觉"]
+        G3A{"结论夸大?"} -- 是 --> G3B["软警告 附检查报告"]
+        G3A -- 否 --> PASS["通过"]
+        G3B --> PASS
+    end
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <tr><th>Guardrail</th><th>类型</th><th>行为</th><th>理由</th></tr>
+                <tr><td>第一道：溯源校验</td><td><span class="badge yellow">🟡 软警告</span></td><td>不拦截，标注 <code>⚠️ 引用待核验</code></td><td>引用格式多变，正则误判率高</td></tr>
+                <tr><td>第二道：WACC/g 边界</td><td><span class="badge yellow">🟡 软警告</span></td><td>不拦截，标注 <code>⚠️ 估值参数偏离常规</code></td><td>参数偏离时提醒关注，但不强制重算</td></tr>
+                <tr><td>第三道：防幻觉</td><td><span class="badge yellow">🟡 软警告</span></td><td>不拦截，附防幻觉检查报告</td><td>判断题不是数学题，LLM 标注比正则拦截更有用</td></tr>
+            </table>
+        </div>
+
+        <div class="highlight">
+            <strong>设计理念</strong>：所有 Guardrails 均为软警告，不阻塞 Agent 输出。真正的安全网是 Sicong 的人工确认。Guardrails 的作用是提供更多信息让 Sicong 做判断，而不是替 Sicong 做决定。
+        </div>
+
+        <h3>共识门禁机制</h3>
+        <div class="mermaid">
+flowchart TD
+    L5["Agent 1 产出 L5 草案"] --> COT["Agent 2 CoT 自我辩论"]
+    COT --> CON{"共识等级?"}
+    CON -- "高共识" --> PUSH1["立即推送 强烈建议"]
+    CON -- "有条件共识" --> PUSH2["推送 + 附加条件"]
+    CON -- "存在争议" --> PUSH3["推送 + 分歧焦点 Sicong裁决"]
+    CON -- "强烈反对" --> BLOCK["拦截待观望"]
+        </div>
+
+        <h3>慢循环完整工作流</h3>
+        <div class="mermaid">
+flowchart TD
+    T["触发"] --> F["候选筛选 Python量化"]
+    F --> A1["Agent 1 研究分析 五段式"]
+    A1 --> A2["Agent 2 决策 CoT辩论"]
+    A2 --> G["Guardrails 3道软警告"]
+    G --> SC{"Sicong 确认?"}
+    SC -- 确认 --> A4["Agent 4 交易执行"]
+    A4 --> A3a["Agent 3 操作记录"]
+    SC -- 拒绝 --> A3b["Agent 3 拒绝原因分析"]
+    A3b --> FB["回写 Context 快速反馈"]
+    FB --> A3a
+        </div>
+
+        <h3>投资建议书（最终输出模板）</h3>
+        <p>投资建议书是系统交付给 Sicong 的<strong>唯一正式文档</strong>——即"策略说明书"。由 WorkflowOrchestrator 在 Agent 2 决策 + Guardrails 检查之后装配，是 Sicong 确认/拒绝的唯一依据。L5 研究草案、CoT 辩论原文、Guardrails 警告均作为附件引用。</p>
+
+        <div class="mermaid">
+flowchart LR
+    L5["Agent 1<br/>L5 研究草案"] --> ASM
+    DEC["Agent 2<br/>CoT 决策报告"] --> ASM
+    GR["Guardrails<br/>3道软警告"] --> ASM
+    ASM["ProposalAssembler<br/>装配建议书"] --> PROP["投资建议书<br/>PROPOSAL-TICKER-DATE"]
+    PROP --> SC{"Sicong 确认?"}
+    SC -- 确认 --> EXEC["Agent 4 执行"]
+    SC -- 拒绝 --> REJ["拒绝原因回写 Context"]
+        </div>
+
+        <h4>建议书结构（9 节）</h4>
+        <table>
+            <tr><th>节</th><th>标题</th><th>内容</th></tr>
+            <tr><td>一</td><td>核心结论（30秒速览）</td><td>标的、操作、仓位、共识等级、安全边际、一句话逻辑</td></tr>
+            <tr><td>二</td><td>研究摘要（L5 精简版）</td><td>底层逻辑三问、产业链定位、证据强度（A/B/C/D 条数）</td></tr>
+            <tr><td>三</td><td>估值摘要</td><td>悲观/中性/乐观 DCF 三档 + 安全边际</td></tr>
+            <tr><td>四</td><td>CoT 辩论摘要</td><td>正方3条论点 + 反方3条反驳 + 综合判断</td></tr>
+            <tr><td>五</td><td>Guardrails 检查结果</td><td>3道软警告结果透明展示</td></tr>
+            <tr><td>六</td><td>建仓方案</td><td>仓位、分批方案、止损/止盈</td></tr>
+            <tr><td>七</td><td>跟踪假设（L6 锁定）</td><td>假设、指标、阈值、触发动作、检查时点</td></tr>
+            <tr><td>八</td><td>风险提示</td><td>主要风险</td></tr>
+            <tr><td>九</td><td>Sicong 确认区</td><td>确认/拒绝 + 拒绝原因填写</td></tr>
+        </table>
+
+        <h4>设计要点</h4>
+        <ul>
+            <li><strong>唯一交付物</strong>：Sicong 只看这一份文档做决策，不需要翻阅 L5/CoT 原文</li>
+            <li><strong>30秒速览</strong>：第一节"核心结论"让 Sicong 快速判断是否值得细看</li>
+            <li><strong>证据强度量化</strong>：明确展示 A/B/C/D 各级证据条数，是否有关键 A 级支撑</li>
+            <li><strong>CoT 摘要而非全文</strong>：只保留正反各3条核心论点，全文作为附件</li>
+            <li><strong>Guardrails 透明</strong>：软警告结果全部展示，⚠️ 项提醒 Sicong 关注</li>
+            <li><strong>拒绝原因结构化</strong>：拒绝时填写原因，回写 Context 形成快速反馈循环</li>
+        </ul>
+
+        <h4>Sicong 交互界面（推送 + 详情按钮）</h4>
+        <p>系统推送决策给 Sicong 时，采用<strong>"摘要推送 + 详情查看"</strong>两级交互模式。</p>
+
+        <div class="mermaid">
+flowchart LR
+    PUSH["系统推送<br/>决策摘要卡片"] --> BTN
+    BTN["Sicong 操作区"]
+    BTN --> B1["📋 详情<br/>查看完整建议书"]
+    BTN --> B2["✅ 确认<br/>按建仓方案执行"]
+    BTN --> B3["✏️ 调整<br/>修改仓位后确认"]
+    BTN --> B4["❌ 拒绝<br/>填写拒绝原因"]
+    B1 --> DETAIL["展开投资建议书全文<br/>9节完整内容"]
+    B2 --> EXEC["Agent 4 执行"]
+    B3 --> EXEC
+    B4 --> REJ["Agent 3 分析拒绝原因<br/>回写 Context"]
+        </div>
+
+        <h4>推送卡片（摘要）— Sicong 第一眼看到的内容</h4>
+        <pre style="background: var(--bg-card); padding: 16px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; line-height: 1.6;">
+┌─────────────────────────────────────────────┐
+│  📊 NVDA 买入建议    🟢 高共识              │
+│  建议仓位 8%  安全边际 22.3%                │
+│  一句话逻辑：AI算力卡点，GPU产能瓶颈        │
+│  ⚠️ 1项软警告（WACC偏离）                   │
+│                                             │
+│  [📋 详情]  [✅ 确认]  [✏️ 调整]  [❌ 拒绝]  │
+└─────────────────────────────────────────────┘</pre>
+
+        <table>
+            <tr><th>操作</th><th>行为</th></tr>
+            <tr><td>📋 详情</td><td>展开投资建议书全文（9节完整内容），含 CoT 辩论摘要、Guardrails 结果、建仓方案、跟踪假设等。查看后返回卡片做决策</td></tr>
+            <tr><td>✅ 确认</td><td>按建仓方案执行，Agent 4 下单</td></tr>
+            <tr><td>✏️ 调整</td><td>Sicong 可修改仓位百分比后确认执行</td></tr>
+            <tr><td>❌ 拒绝</td><td>弹出拒绝原因输入框，提交后 Agent 3 分析并回写 Context</td></tr>
+        </table>
+
+        <p><strong>设计理念</strong>：Sicong 默认只看摘要卡片即可决策（30秒）；需要深入时点"详情"查看完整建议书。避免信息过载，同时保证可溯源。</p>
+    </div>
+
+    <!-- Section 8 -->
+    <div class="section reveal" id="s8">
+        <div class="section-header">
+            <span class="section-number">08</span>
+            <h2>业务生命周期设计</h2>
+        </div>
+
+        <h3>全生命周期流程</h3>
+        <div class="mermaid">
+flowchart LR
+    subgraph pre["未买前：预测与准入"]
+        P1["候选筛选"] --> P2["五段式研究"]
+        P2 --> P3["估值+安全边际"]
+        P3 --> P4["建仓方案"]
+    end
+    subgraph post["已买后：追踪与预警"]
+        H1["持仓状态转换"] --> H2["L6 假设红线监控"]
+        H2 --> H3["财报持续跟踪"]
+        H3 --> H4{"假设证伪?"}
+        H4 -- 是 --> WARN["操作预警"]
+        H4 -- 否 --> H2
+    end
+    subgraph sell["卖出操作"]
+        S1["止损触发"] --> S4["CoT辩论+Sicong确认"]
+        S2["假设断裂"] --> S4
+        S3["止盈触发"] --> S4
+        S5["仓位失衡"] --> S4
+        S4 --> S6["Agent 4 执行卖出"]
+    end
+    pre --> post
+    WARN --> sell
+        </div>
+
+        <h3>卖出触发场景</h3>
+        <div class="card-grid">
+            <div class="card red">
+                <span class="icon">🛑</span>
+                <h4>止损触发</h4>
+                <p>价格跌破设定止损线（如 -12%）</p>
+                <p>建议立即清仓</p>
+            </div>
+            <div class="card orange">
+                <span class="icon">⚠️</span>
+                <h4>假设断裂</h4>
+                <p>财报指标跌破买入红线（如营收增速 < 10%）</p>
+                <p>建议减仓/清仓</p>
+            </div>
+            <div class="card green">
+                <span class="icon">🎯</span>
+                <h4>止盈触发</h4>
+                <p>价格超过估值中枢 30%+，进入高估区间</p>
+                <p>建议分批止盈</p>
+            </div>
+            <div class="card blue">
+                <span class="icon">⚖️</span>
+                <h4>仓位失衡</h4>
+                <p>大涨导致单股仓位超出上限</p>
+                <p>建议减仓至上限内</p>
+            </div>
+        </div>
+
+        <div class="highlight red">
+            <strong>紧急熔断例外</strong>：价格跌破止损线超过 5%，无需共识投票，直接推送红色硬止损警报。
+        </div>
+    </div>
+
+    <!-- Section 9: Fishbone -->
+    <div class="section reveal" id="s9">
+        <div class="section-header">
+            <span class="section-number">09</span>
+            <h2>投资决策质量鱼骨图</h2>
+        </div>
+
+        <p>影响投资决策质量的关键因素分析：</p>
+        <div class="mermaid">
+flowchart LR
+    PROB["投资决策质量"]
+    subgraph data_quality["数据质量"]
+        DQ1["证据等级缺失"]
+        DQ2["信息过时"]
+        DQ3["来源不可靠"]
+    end
+    subgraph analysis_logic["分析逻辑"]
+        AL1["无红队证伪"]
+        AL2["无防幻觉检查"]
+        AL3["单一视角"]
+    end
+    subgraph market_adapt["市场适配"]
+        MA1["美股偏向"]
+        MA2["A股规则忽略"]
+        MA3["估值方法错配"]
+    end
+    subgraph execution["执行纪律"]
+        EX1["未按建议分批"]
+        EX2["追高/超仓"]
+        EX3["拒绝原因未回写"]
+    end
+    subgraph feedback["反馈学习"]
+        FB1["无快速反馈循环"]
+        FB2["拒绝原因丢失"]
+        FB3["历史案例未检索"]
+    end
+    data_quality --> PROB
+    analysis_logic --> PROB
+    market_adapt --> PROB
+    execution --> PROB
+    feedback --> PROB
+        </div>
+
+        <h3>系统对策</h3>
+        <div class="table-wrap">
+            <table>
+                <tr><th>因素</th><th>问题</th><th>系统对策</th></tr>
+                <tr><td rowspan="3"><strong>数据质量</strong></td><td>证据等级缺失</td><td>L2 强制标注 A/B/C/D 证据等级</td></tr>
+                <tr><td>信息过时</td><td>RAG 时间衰减 + L6 跟踪表</td></tr>
+                <tr><td>来源不可靠</td><td>证据等级体系 + D 级仅线索</td></tr>
+                <tr><td rowspan="4"><strong>分析逻辑</strong></td><td>无红队证伪</td><td>五段式第三段：红队证伪 5 问</td></tr>
+                <tr><td>无防幻觉检查</td><td>五段式第四段：防幻觉检查</td></tr>
+                <tr><td>单一视角</td><td>三脑视角（白毛股神+孙宇晨+盲区检测）</td></tr>
+                <tr><td>底层逻辑未验证</td><td>底层逻辑三问强制回答</td></tr>
+                <tr><td rowspan="3"><strong>市场适配</strong></td><td>美股偏向</td><td>Market Adapter 层 + 两套配置</td></tr>
+                <tr><td>A 股规则忽略</td><td>A 股特殊规则配置（T+1/涨跌停/龙虎榜）</td></tr>
+                <tr><td>估值方法错配</td><td>市场配置估值偏好（DCF vs PE-Band）</td></tr>
+                <tr><td rowspan="2"><strong>执行纪律</strong></td><td>未按建议分批</td><td>操作纪律评分系统</td></tr>
+                <tr><td>追高/超仓</td><td>高风险操作二次确认门禁</td></tr>
+                <tr><td rowspan="3"><strong>反馈学习</strong></td><td>无快速反馈</td><td>拒绝原因即时回写 Context</td></tr>
+                <tr><td>拒绝原因丢失</td><td>L7 rejection_reason 字段</td></tr>
+                <tr><td>历史案例未检索</td><td>L7 元 RAG：IA 给建议前检索历史相似案例</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 10 -->
+    <div class="section reveal" id="s10">
+        <div class="section-header">
+            <span class="section-number">10</span>
+            <h2>Sicong 强纠错保护机制</h2>
+        </div>
+
+        <div class="card-grid">
+            <div class="card red">
+                <span class="icon">🚨</span>
+                <h4>高风险操作二次确认</h4>
+                <p>默认选项为"取消执行"：</p>
+                <ul>
+                    <li>追高：高于估值中枢 15%+</li>
+                    <li>超仓：单股仓位超上限</li>
+                    <li>亏损加仓：亏损 > 8%</li>
+                    <li>极度恐慌：VIX > 30</li>
+                </ul>
+            </div>
+            <div class="card orange">
+                <span class="icon">🔍</span>
+                <h4>个人画像盲区检测</h4>
+                <ul>
+                    <li>资金规模、风险边界、持仓上限</li>
+                    <li>投资风格、历史盲区清单</li>
+                    <li>首次启动对话式问卷采集</li>
+                    <li>AI 发现新盲区 → 画像更新提案</li>
+                </ul>
+            </div>
+            <div class="card green">
+                <span class="icon">⭐</span>
+                <h4>操作纪律评分</h4>
+                <ul>
+                    <li>遵循系统建议 → +1 分</li>
+                    <li>被警告仍坚持 → -1 分</li>
+                    <li>定期报告评分与改进建议</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 11 -->
+    <div class="section reveal" id="s11">
+        <div class="section-header">
+            <span class="section-number">11</span>
+            <h2>人工确认门禁完整清单</h2>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <tr><th>#</th><th>确认触发条件</th><th>频率</th><th>严重程度</th></tr>
+                <tr><td>1</td><td>股票晋级核心池 A（B→A 提案）</td><td>每周 0-3次</td><td><span class="badge yellow">⚠️ 普通</span></td></tr>
+                <tr><td>2</td><td>Agent 2 给出买入建议（共识 ≥ 有条件）</td><td>每周 0-5次</td><td><span class="badge yellow">⚠️ 普通</span></td></tr>
+                <tr><td>3</td><td>L5 估值模型参数调整提案</td><td>每季度/每家</td><td><span class="badge yellow">⚠️ 普通</span></td></tr>
+                <tr><td>4</td><td>持仓假设断裂 → 减仓/止损建议</td><td>不定期</td><td><span class="badge red">🔴 重要</span></td></tr>
+                <tr><td>5</td><td>高风险操作二次确认门禁</td><td>触发时</td><td><span class="badge red">🔴 重要</span></td></tr>
+                <tr><td>6</td><td>Sicong 个人画像更新提案</td><td>不定期</td><td><span class="badge yellow">⚠️ 普通</span></td></tr>
+                <tr><td>7</td><td>宏观乘数矩阵调整提案</td><td>每月 0-1次</td><td><span class="badge yellow">⚠️ 普通</span></td></tr>
+                <tr><td>8</td><td>卖出建议（止损/止盈/假设断裂）</td><td>不定期</td><td><span class="badge red">🔴 重要</span></td></tr>
+                <tr><td>9</td><td>紧急熔断硬止损（无需共识）</td><td>触发时</td><td><span class="badge red">🔴 紧急</span></td></tr>
+                <tr><td>10</td><td>A 股涨跌停板特殊处理确认</td><td>触发时</td><td><span class="badge yellow">⚠️ 普通</span></td></tr>
+                <tr><td>11</td><td>限售解禁预警确认（A 股）</td><td>触发时</td><td><span class="badge yellow">⚠️ 普通</span></td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 13: Data Sources -->
+    <div class="section reveal" id="s13">
+        <div class="section-header">
+            <span class="section-number">13</span>
+            <h2>数据源完整清单</h2>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab(this, 'us-data')">🇺🇸 美股数据源</div>
+            <div class="tab" onclick="switchTab(this, 'cn-data')">🇨🇳 A 股数据源</div>
+        </div>
+
+        <div id="us-data" class="tab-content active">
+            <div class="table-wrap">
+                <table>
+                    <tr><th>数据类别</th><th>具体内容</th><th>证据等级</th><th>获取方式</th></tr>
+                    <tr><td>公司公告</td><td>10-K/10-Q/8-K/招股书</td><td><span class="badge green">A</span></td><td>SEC EDGAR API</td></tr>
+                    <tr><td>财报电话会</td><td>Q&A 环节全文</td><td><span class="badge green">A/B</span></td><td>Seeking Alpha / 官方 IR</td></tr>
+                    <tr><td>管理层言论</td><td>CEO/CFO 访谈、股东信</td><td><span class="badge blue">B</span></td><td>新闻爬取 / 手动投喂</td></tr>
+                    <tr><td>机构持仓</td><td>13F 披露</td><td><span class="badge blue">B</span></td><td>SEC EDGAR API</td></tr>
+                    <tr><td>产业链情报</td><td>机构调研、供应链信息</td><td><span class="badge blue">B</span></td><td>手动投喂 + AI 提炼</td></tr>
+                    <tr><td>卖方研报</td><td>GS/MS 等券商研报</td><td><span class="badge yellow">C</span></td><td>手动投喂 / RSS</td></tr>
+                    <tr><td>财经新闻</td><td>财经媒体全文</td><td><span class="badge yellow">C</span></td><td>RSS / 爬虫</td></tr>
+                    <tr><td>社交媒体</td><td>Twitter/Reddit</td><td><span class="badge red">D</span></td><td>Twitter API / RSS</td></tr>
+                    <tr><td>宏观政策</td><td>FOMC/CPI/GDP/PMI</td><td><span class="badge green">A/B</span></td><td>官方 API / RSS</td></tr>
+                    <tr><td>实时行情</td><td>价格/成交量</td><td><span class="badge green">A</span></td><td>富途 MCP / Yahoo Finance</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div id="cn-data" class="tab-content">
+            <div class="table-wrap">
+                <table>
+                    <tr><th>数据类别</th><th>具体内容</th><th>证据等级</th><th>获取方式</th></tr>
+                    <tr><td>公司公告</td><td>年报/季报/临时公告</td><td><span class="badge green">A</span></td><td>巨潮资讯网 API</td></tr>
+                    <tr><td>调研纪要</td><td>机构调研纪要</td><td><span class="badge blue">B</span></td><td>巨潮 / 东方财富</td></tr>
+                    <tr><td>管理层言论</td><td>高管访谈、新闻稿</td><td><span class="badge blue">B</span></td><td>新闻爬取 / 手动投喂</td></tr>
+                    <tr><td>北向资金</td><td>外资持仓变动</td><td><span class="badge blue">B</span></td><td>东方财富 API</td></tr>
+                    <tr><td>融资融券</td><td>多空数据</td><td><span class="badge blue">B</span></td><td>交易所 API</td></tr>
+                    <tr><td>龙虎榜</td><td>机构席位追踪</td><td><span class="badge blue">B</span></td><td>交易所 API</td></tr>
+                    <tr><td>卖方研报</td><td>券商研报</td><td><span class="badge yellow">C</span></td><td>手动投喂 / RSS</td></tr>
+                    <tr><td>财经新闻</td><td>财经媒体全文</td><td><span class="badge yellow">C</span></td><td>RSS / 爬虫</td></tr>
+                    <tr><td>社交媒体</td><td>微博/雪球/论坛</td><td><span class="badge red">D</span></td><td>API / 爬虫</td></tr>
+                    <tr><td>宏观政策</td><td>央行/统计局/证监会</td><td><span class="badge green">A/B</span></td><td>官方 API / RSS</td></tr>
+                    <tr><td>实时行情</td><td>价格/成交量</td><td><span class="badge green">A</span></td><td>富途 MCP / 东方财富</td></tr>
+                    <tr><td>限售解禁</td><td>解禁日期与规模</td><td><span class="badge green">A</span></td><td>交易所公告</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 14: Testing -->
+    <div class="section reveal" id="s14">
+        <div class="section-header">
+            <span class="section-number">14</span>
+            <h2>系统验证与测试方案</h2>
+        </div>
+
+        <h3>联调测试流程</h3>
+        <div class="mermaid">
+flowchart LR
+    T1["冷启动画像建立"] --> T2["模拟买入<br/>五段式+CoT辩论"]
+    T2 --> T3["模拟假设断裂<br/>财报指标跌破红线"]
+    T3 --> T4["触发卖出建议<br/>CoT辩论+Sicong确认"]
+    T4 --> T5["Sicong 拒绝<br/>拒绝原因回写"]
+    T5 --> T6["验证 Context 注入<br/>下次分析是否包含拒绝原因"]
+        </div>
+
+        <h3>多市场测试</h3>
+        <div class="table-wrap">
+            <table>
+                <tr><th>测试场景</th><th>验证内容</th></tr>
+                <tr><td>美股标的运行</td><td>US 配置加载正确，SEC EDGAR 数据获取正常</td></tr>
+                <tr><td>A 股标的运行</td><td>CN 配置加载正确，巨潮数据获取正常</td></tr>
+                <tr><td>A 股 T+1 检查</td><td>当日买入不可卖出</td></tr>
+                <tr><td>A 股涨跌停</td><td>达到涨跌停板时交易被拦截</td></tr>
+                <tr><td>同一标的双市场</td><td>核心逻辑一致，仅配置差异</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 15: Backtesting -->
+    <div class="section reveal" id="s15">
+        <div class="section-header">
+            <span class="section-number">15</span>
+            <h2>回测模式（Point-in-Time Backtesting）</h2>
+        </div>
+
+        <div class="highlight blue">
+            <strong>定位</strong>：回测模式是系统的经验性验证机制——用历史数据检验策略是否真的有效。复用现有 4 Agent 管线，新增 Point-in-Time 数据过滤 + 性能评估。
+        </div>
+
+        <h3>架构</h3>
+        <div class="mermaid">
+flowchart TB
+    subgraph normal["生产模式（实时）"]
+        N1["实时 Context"] --> N2["4 Agent 管线"]
+        N2 --> N3["真实交易"]
+    end
+    subgraph backtest["回测模式（模拟）"]
+        B1["Point-in-Time Context<br/>数据层日期过滤"] --> B2["4 Agent 管线<br/>同一套逻辑"]
+        B2 --> B3["模拟交易<br/>不花钱"]
+        B3 --> B4["性能评估<br/>收益/胜率/回撤"]
+        B4 --> B5["回写 L7<br/>作为历史经验"]
+    end
+        </div>
+
+        <h3>Point-in-Time 数据过滤</h3>
+        <div class="highlight green">
+            <strong>只在数据层做时间过滤，不在 Prompt 中限制 LLM。</strong> LLM 自然地基于提供的 Context 分析和回忆，不需要额外约束。
+        </div>
+        <pre><code>class PointInTimeFilter:
+    """回测模式专用：数据层过滤指定日期之后的所有数据"""
+
+    def filter_context(self, context, as_of_date):
+        # L1/L2 事实：只保留 as_of_date 之前的
+        context["l2_facts"] = [f for f in context["l2_facts"] if f.date <= as_of_date]
+
+        # RAG 检索：添加日期过滤
+        context["rag_results"] = self.rag.search(
+            query=context["query"],
+            filter={"date": {"$lte": as_of_date}}
+        )
+
+        # L7 历史：只保留 as_of_date 之前的操作
+        context["l7_history"] = [h for h in context["l7_history"] if h.date <= as_of_date]
+
+        return context</code></pre>
+
+        <h3>回测执行流程</h3>
+        <div class="mermaid">
+flowchart TD
+    START["设定回测参数"] --> LOOP["逐日循环"]
+    LOOP --> PT["Point-in-Time Context"] --> EVT{"有事件触发?"}
+    EVT -- "财报/异动/红线" --> RUN["运行 4 Agent 管线"]
+    EVT -- "无事件" --> MON["仅持仓监控"]
+    RUN --> SIM["模拟交易执行"]
+    MON --> NEXT["下一日"]
+    SIM --> NEXT
+    NEXT --> LOOP
+    LOOP --> END["到达结束日期"]
+    END --> EVAL["性能评估"]
+        </div>
+
+        <h3>事件驱动机制（控制成本）</h3>
+        <div class="table-wrap">
+            <table>
+                <tr><th>事件类型</th><th>触发条件</th><th>执行内容</th></tr>
+                <tr><td>财报发布</td><td>季度财报发布日</td><td>运行完整漏斗（产业链筛选→公司初筛→深入研究）</td></tr>
+                <tr><td>价格异动</td><td>单日涨跌幅 > ±5%</td><td>运行 Agent 2 决策（基于已有 L5）</td></tr>
+                <tr><td>假设红线触发</td><td>L6 假设指标跌破红线</td><td>运行 Agent 2 决策（卖出评估）</td></tr>
+                <tr><td>无事件</td><td>无上述事件</td><td>仅运行持仓监控（Python，0 Token）</td></tr>
+            </table>
+        </div>
+
+        <h3>性能评估指标</h3>
+        <div class="card-grid">
+            <div class="card green">
+                <h4>总收益率</h4>
+                <p>模拟期间整体收益</p>
+            </div>
+            <div class="card blue">
+                <h4>超额收益</h4>
+                <p>相对基准（S&P 500 / 沪深 300）的超额</p>
+            </div>
+            <div class="card red">
+                <h4>最大回撤</h4>
+                <p>模拟期间最大亏损幅度</p>
+            </div>
+            <div class="card yellow">
+                <h4>胜率</h4>
+                <p>盈利建议数 / 总建议数</p>
+            </div>
+            <div class="card purple">
+                <h4>共识准确度</h4>
+                <p>🟢高共识胜率 vs 🟠争议胜率</p>
+            </div>
+            <div class="card orange">
+                <h4>纪律评分对比</h4>
+                <p>遵循系统建议 vs 随机操作的收益差</p>
+            </div>
+        </div>
+
+        <div class="highlight yellow">
+            <strong>回测结果回写 L7</strong>：作为"历史经验"供生产模式的 Agent 检索。让系统从模拟中学习，不花真钱就能积累经验。
+        </div>
+    </div>
+
+    <!-- Section 16: Strategy Correction -->
+    <div class="section reveal" id="s16">
+        <div class="section-header">
+            <span class="section-number">16</span>
+            <h2>策略修正机制</h2>
+        </div>
+
+        <div class="highlight blue">
+            系统通过 4 个时间尺度的修正机制持续进化：即时修正（秒级）→ 操作后修正（分钟级）→ 回测修正（小时级）→ 季度策略审视（季度）。
+        </div>
+
+        <h3>修正机制总览</h3>
+        <div class="mermaid">
+flowchart TD
+    subgraph T1["即时修正（秒级）"]
+        R1["Sicong 拒绝提案"] --> R2["拒绝原因回写 Context"]
+        R2 --> R3["下次提案注入拒绝原因"]
+    end
+    subgraph T2["操作后修正（分钟级）"]
+        O1["Agent 3 操作分析"] --> O2["纪律评分"]
+        O2 --> O3["复盘评价"]
+        O3 --> O4["经验教训写入 L7"]
+    end
+    subgraph T3["回测修正（小时级）"]
+        B1["回测模式运行"] --> B2["性能评估"]
+        B2 --> B3["胜率/回撤/超额收益"]
+        B3 --> B4["回写 L7 供生产检索"]
+    end
+    subgraph T4["季度策略审视（季度）"]
+        Q1["系统性偏差检测"] --> Q2["证据等级有效性检测"]
+        Q2 --> Q3["产业链筛选有效性检测"]
+        Q3 --> Q4["输出策略调整提案"]
+    end
+    T1 --> T2 --> T3 --> T4
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <tr><th>修正环节</th><th>触发时机</th><th>修正内容</th><th>位置</th></tr>
+                <tr><td><strong>即时修正</strong></td><td>Sicong 拒绝提案时</td><td>拒绝原因回写 Context，下次提案注入</td><td>6.3 快速反馈循环</td></tr>
+                <tr><td><strong>操作后修正</strong></td><td>每笔操作完成后</td><td>纪律评分、复盘评价、经验教训</td><td>5.4 Agent 3</td></tr>
+                <tr><td><strong>回测修正</strong></td><td>回测模式运行后</td><td>胜率/回撤分析、共识准确度验证</td><td>15.7 回测结果回写</td></tr>
+                <tr><td><strong>季度策略审视</strong></td><td>每季度/每次平仓</td><td>系统性偏差检测、策略调整提案</td><td>16.4 季度策略审视</td></tr>
+            </table>
+        </div>
+
+        <h3>16.4 季度策略审视（主动修正）</h3>
+        <div class="highlight red">
+            <strong>与前三者的区别</strong>：前三个修正机制是<strong>被动修正</strong>（等拒绝/等操作完成/等回测结束才学）。季度策略审视是<strong>主动修正</strong>——系统主动审视自身表现，发现系统性偏差，提出调整建议。
+        </div>
+
+        <h4>系统性偏差检测</h4>
+        <div class="table-wrap">
+            <table>
+                <tr><th>检测项</th><th>检测方法</th><th>异常信号</th><th>调整方向</th></tr>
+                <tr><td>CoT 辩论有效性</td><td>🟢高共识胜率 vs 🟠争议胜率</td><td>高共识胜率 ≤ 争议胜率</td><td>CoT Prompt 需调整</td></tr>
+                <tr><td>保守度偏差</td><td>被拒绝建议的事后表现</td><td>拒绝的建议事后大量赚钱</td><td>估值方法需放宽</td></tr>
+                <tr><td>激进度偏差</td><td>被接受建议的事后表现</td><td>接受的建议事后大量亏钱</td><td>安全边际需提高</td></tr>
+                <tr><td>证据等级有效性</td><td>A级建议胜率 vs C/D级建议胜率</td><td>无显著差异</td><td>证据等级标注需加强</td></tr>
+                <tr><td>产业链筛选有效性</td><td>第一层筛选出的产业链后续表现</td><td>大量走弱</td><td>C0-C4 筛选逻辑需调整</td></tr>
+            </table>
+        </div>
+
+        <h4>策略调整提案示例</h4>
+        <pre><code># 策略调整提案 STRATEGY-REVIEW-2026Q2
+
+## 检测结果
+1. CoT 辩论有效性: ✅ 有效（高共识 75% vs 争议 40%）
+2. 保守度偏差: ⚠️ 成长股估值过于保守
+3. 证据等级有效性: ✅ 有效（A级 70% vs C/D级 45%）
+4. 产业链筛选: ✅ 有效（60% 走强）
+
+## 策略调整建议
+### 建议 1: 成长股 WACC 上限 12% → 10%
+### 建议 2: 孙宇晨从叙事领袖降级为普通 D 级
+
+## Sicong 确认
+- [ ] 接受建议 1
+- [ ] 接受建议 2
+- [ ] 全部拒绝
+- [ ] 部分接受</code></pre>
+
+        <h4>策略调整执行</h4>
+        <div class="table-wrap">
+            <table>
+                <tr><th>调整类型</th><th>写入位置</th><th>生效范围</th></tr>
+                <tr><td>WACC/g 范围调整</td><td><code>market-us.yaml</code> / <code>market-cn.yaml</code></td><td>下次 Agent 1 估值时</td></tr>
+                <tr><td>叙事领袖清单更新</td><td><code>market-us.yaml</code> / <code>market-cn.yaml</code></td><td>下次 Agent 1 研究时</td></tr>
+                <tr><td>CoT Prompt 调整</td><td>Agent 2 Prompt 模板</td><td>下次 Agent 2 决策时</td></tr>
+                <tr><td>产业链筛选标准调整</td><td>Agent 1 第一层 Prompt</td><td>下次 Agent 1 研究时</td></tr>
+            </table>
+        </div>
+
+        <div class="highlight green">
+            <strong>所有调整记录写入 L7</strong>，作为策略演进历史供未来检索。系统不仅从错误中学习，还主动发现自己的系统性偏差并提出修正——这是从"被动纠错"到"主动进化"的关键一步。
+        </div>
+    </div>
+
+</div>
+
+<!-- Footer -->
+<div class="footer">
+    <p>股票投研 Agent 系统设计规范 | 2026-06-18</p>
+    <p style="margin-top: 8px;">同心圆三层 · 双循环 · Market Adapter · CoT 自我辩论 · 快速反馈循环</p>
+</div>
+
+<script>
+// Mermaid init
+mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+        primaryColor: '#1a2234',
+        primaryTextColor: '#e2e8f0',
+        primaryBorderColor: '#3b82f6',
+        lineColor: '#64748b',
+        secondaryColor: '#243044',
+        tertiaryColor: '#111827',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif'
+    },
+    flowchart: { curve: 'basis', padding: 20 }
+});
+
+// Collapsible
+function toggleCollapsible(header) {
+    const item = header.parentElement;
+    item.classList.toggle('open');
+}
+
+// Tabs
+function switchTab(tab, contentId) {
+    const tabs = tab.parentElement.querySelectorAll('.tab');
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    const parent = tab.closest('.section');
+    parent.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById(contentId).classList.add('active');
+}
+
+// Consensus selector
+const consensusDetails = [
+    '<strong>🟢 高共识</strong>：正方论证充分，反方无法提出实质性反驳。立即推送，强烈建议执行。标签：<code>强推</code>',
+    '<strong>🟡 有条件共识</strong>：正方论证成立，但反方提出需附加条件。推送，同时展示附加条件与风险提示。标签：<code>有条件同意</code>',
+    '<strong>🟠 存在争议</strong>：反方提出重大异议，正方无法完全反驳。两方观点同时呈现，Sicong 做最终裁决。标签：<code>存在争议</code>',
+    '<strong>🔴 强烈反对</strong>：反方发现致命逻辑缺陷。暂不推送，等待新数据窗口重新评估。标签：<code>拦截待观望</code>'
+];
+
+function selectConsensus(item, index) {
+    document.querySelectorAll('.consensus-item').forEach(c => c.classList.remove('selected'));
+    item.classList.add('selected');
+    document.getElementById('consensus-detail').innerHTML = consensusDetails[index];
+}
+
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+        }
+    });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Nav active state
+const navLinks = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('.section');
+
+window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(section => {
+        const sectionTop = section.offsetTop - 100;
+        if (window.scrollY >= sectionTop) {
+            current = section.getAttribute('id');
+        }
+    });
+    navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + current) {
+            link.classList.add('active');
+        }
+    });
+});
+
+// Smooth scroll
+navLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = document.querySelector(link.getAttribute('href'));
+        if (target) {
+            window.scrollTo({ top: target.offsetTop - 80, behavior: 'smooth' });
+        }
+    });
+});
+</script>
+
+</body>
+</html>

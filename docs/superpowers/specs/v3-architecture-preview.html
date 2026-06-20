@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>V3 统一架构设计 - 投资研究 AI 系统</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-card: #161b22;
+    --bg-code: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f0883e;
+    --accent4: #f778ba;
+    --accent5: #a371f7;
+    --red: #f85149;
+    --yellow: #d29922;
+    --green: #3fb950;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 0;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 24px 32px;
+    text-align: center;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent5));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+  .header .meta { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+  }
+  .badge.blue { color: var(--accent); border-color: rgba(88,166,255,0.3); }
+  .badge.green { color: var(--green); border-color: rgba(63,185,80,0.3); }
+  .badge.orange { color: var(--accent3); border-color: rgba(240,136,62,0.3); }
+
+  /* Nav */
+  .nav {
+    position: sticky;
+    top: 0;
+    background: rgba(13,17,23,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+    padding: 12px 24px;
+  }
+  .nav-inner { max-width: 1200px; margin: 0 auto; display: flex; gap: 8px; overflow-x: auto; }
+  .nav a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .nav a:hover { color: var(--accent); background: rgba(88,166,255,0.1); }
+
+  /* Sections */
+  section { margin-bottom: 48px; scroll-margin-top: 60px; }
+  h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2 .icon { font-size: 22px; }
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 28px 0 14px;
+    color: var(--accent);
+  }
+  h4 { font-size: 15px; font-weight: 600; margin: 20px 0 10px; color: var(--accent3); }
+  p { margin-bottom: 12px; color: var(--text); }
+  ul, ol { margin: 12px 0 12px 24px; }
+  li { margin-bottom: 6px; }
+  strong { color: var(--text); font-weight: 600; }
+  code {
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+    background: var(--bg-code);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--accent3);
+  }
+
+  /* Architecture Diagram */
+  .arch-diagram {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+  .arch-diagram pre {
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
+    white-space: pre;
+  }
+
+  /* Concentric Circle Visual */
+  .concentric-viz {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 0;
+    position: relative;
+  }
+  .circle {
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .circle-outer {
+    width: 520px; height: 520px;
+    background: rgba(247,120,186,0.06);
+    border: 2px solid rgba(247,120,186,0.3);
+  }
+  .circle-middle {
+    width: 380px; height: 380px;
+    background: rgba(88,166,255,0.06);
+    border: 2px solid rgba(88,166,255,0.3);
+  }
+  .circle-inner {
+    width: 240px; height: 240px;
+    background: rgba(63,185,80,0.08);
+    border: 2px solid rgba(63,185,80,0.4);
+    flex-direction: column;
+  }
+  .circle-label {
+    position: absolute;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 12px;
+    background: var(--bg);
+  }
+  .circle-outer .circle-label { top: -14px; color: var(--accent4); border: 1px solid rgba(247,120,186,0.4); }
+  .circle-middle .circle-label { top: -14px; color: var(--accent); border: 1px solid rgba(88,166,255,0.4); }
+  .circle-inner .circle-label { top: -14px; color: var(--green); border: 1px solid rgba(63,185,80,0.4); }
+  .circle-content { text-align: center; font-size: 12px; color: var(--text-dim); padding: 20px; }
+  .circle-content .title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 16px 0; border-radius: 8px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    background: var(--bg-card);
+    color: var(--accent);
+    font-weight: 600;
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(48,54,61,0.5);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(88,166,255,0.03); }
+  tr:last-child td { border-bottom: none; }
+
+  /* Cards */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 16px 0;
+  }
+  .card-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+  /* Agent Cards */
+  .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin: 20px 0; }
+  .agent-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.2s;
+  }
+  .agent-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .agent-card .agent-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .agent-num {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px;
+    flex-shrink: 0;
+  }
+  .agent-card .agent-name { font-size: 15px; font-weight: 600; }
+  .agent-card .agent-model { font-size: 12px; color: var(--text-dim); margin-left: auto; }
+  .agent-card .ppp-item { font-size: 13px; margin-bottom: 6px; }
+  .agent-card .ppp-label { color: var(--accent3); font-weight: 600; }
+  .agent-card .loop-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-top: 8px; }
+  .loop-fast { background: rgba(63,185,80,0.15); color: var(--green); }
+  .loop-slow { background: rgba(240,136,62,0.15); color: var(--accent3); }
+  .loop-both { background: rgba(163,113,247,0.15); color: var(--accent5); }
+
+  /* Code blocks */
+  .code-block {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    overflow-x: auto;
+  }
+  .code-block pre {
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+  .code-block .comment { color: var(--text-dim); }
+  .code-block .keyword { color: var(--accent5); }
+  .code-block .string { color: var(--green); }
+  .code-block .func { color: var(--accent); }
+
+  /* Consensus badges */
+  .consensus { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+  .c-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .c-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
+  .c-orange { background: rgba(240,136,62,0.15); color: var(--accent3); }
+  .c-red { background: rgba(248,81,73,0.15); color: var(--red); }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-direction: column; gap: 8px; margin: 20px 0; }
+  .flow-step {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .flow-arrow { text-align: center; color: var(--text-dim); font-size: 18px; }
+
+  /* L1-L7 layers */
+  .layer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin: 20px 0; }
+  .layer-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    border-left: 4px solid var(--accent);
+  }
+  .layer-card.l1 { border-left-color: var(--green); }
+  .layer-card.l2 { border-left-color: var(--accent); }
+  .layer-card.l3 { border-left-color: var(--accent5); }
+  .layer-card.l4 { border-left-color: var(--accent3); }
+  .layer-card.l5 { border-left-color: var(--accent4); }
+  .layer-card.l6 { border-left-color: var(--yellow); }
+  .layer-card.l7 { border-left-color: var(--red); }
+  .layer-card .layer-name { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .layer-card .layer-path { font-size: 12px; color: var(--accent3); font-family: monospace; margin-bottom: 6px; }
+  .layer-card .layer-desc { font-size: 13px; color: var(--text-dim); }
+
+  /* Guardrail */
+  .guardrail { display: flex; gap: 16px; margin: 12px 0; align-items: flex-start; }
+  .guardrail-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px;
+    flex-shrink: 0;
+    border: 2px solid;
+  }
+  .g1 { color: var(--green); border-color: var(--green); background: rgba(63,185,80,0.1); }
+  .g2 { color: var(--accent3); border-color: var(--accent3); background: rgba(240,136,62,0.1); }
+  .g3 { color: var(--red); border-color: var(--red); background: rgba(248,81,73,0.1); }
+
+  /* Permission table highlights */
+  .perm-early { color: var(--accent3); font-weight: 600; }
+  .perm-mature { color: var(--green); }
+  .perm-always { color: var(--red); font-weight: 600; }
+
+  /* Footer */
+  .footer { text-align: center; padding: 40px 24px; color: var(--text-dim); font-size: 13px; border-top: 1px solid var(--border); margin-top: 40px; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .concentric-viz { transform: scale(0.65); }
+    .agent-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>投资研究 AI 系统规格说明书 V3</h1>
+  <p style="color:var(--text-dim); font-size:15px;">同心圆三层 + 双循环 + L1-L7 统一架构</p>
+  <div class="meta">
+    <span class="badge blue">日期: 2026-06-18</span>
+    <span class="badge green">状态: Proposed</span>
+    <span class="badge orange">技术栈: Obsidian + Python</span>
+  </div>
+</div>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#overview">架构概览</a>
+    <a href="#l1-l7">L1-L7 数据层</a>
+    <a href="#prompt">Prompt 层 (7 Agent)</a>
+    <a href="#context">Context 层 (RAG)</a>
+    <a href="#harness">Harness 层</a>
+    <a href="#lifecycle">业务生命周期</a>
+    <a href="#protection">纠错保护</a>
+    <a href="#gates">确认门禁</a>
+    <a href="#vault">Vault 结构</a>
+    <a href="#verify">自检清单</a>
+    <a href="#diff">版本差异</a>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- 架构概览 -->
+<section id="overview">
+  <h2><span class="icon">🏛️</span> 架构概览：同心圆三层 + 双循环 + L1-L7</h2>
+
+  <div class="concentric-viz">
+    <div class="circle circle-outer">
+      <span class="circle-label">Harness 外层 · 运行保障</span>
+      <div class="circle circle-middle">
+        <span class="circle-label">Context 中层 · 信息供给</span>
+        <div class="circle circle-inner">
+          <span class="circle-label">Prompt 内层 · 7 Agent</span>
+          <div class="circle-content">
+            <div class="title">6P 大脑</div>
+            <div>研究咨询 · 情报分析</div>
+            <div>审计委员会 · IA#1 · IA#2</div>
+            <div>操作分析 · 交易执行</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📐 三层协同逻辑</div>
+    <div style="display:grid; grid-template-columns: repeat(3,1fr); gap:16px; margin-top:12px;">
+      <div style="text-align:center; padding:16px; background:rgba(63,185,80,0.08); border-radius:8px;">
+        <div style="font-size:28px; margin-bottom:8px;">🧠</div>
+        <strong style="color:var(--green);">Prompt</strong>
+        <p style="font-size:13px; color:var(--text-dim); margin-top:4px;">决定模型"做什么"<br>任务定义与输出表达</p>
+      </div>
+      <div style="text-align:center; padding:16px; background:rgba(88,166,255,0.08); border-radius:8px;">
+        <div style="font-size:28px; margin-bottom:8px;">📚</div>
+        <strong style="color:var(--accent);">Context</strong>
+        <p style="font-size:13px; color:var(--text-dim); margin-top:4px;">决定模型"知道什么"<br>信息供给与知识基础</p>
+      </div>
+      <div style="text-align:center; padding:16px; background:rgba(247,120,186,0.08); border-radius:8px;">
+        <div style="font-size:28px; margin-bottom:8px;">🛡️</div>
+        <strong style="color:var(--accent4);">Harness</strong>
+        <p style="font-size:13px; color:var(--text-dim); margin-top:4px;">决定模型"如何可靠做"<br>运行保障与优化闭环</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="border-color: rgba(163,113,247,0.3);">
+    <div class="card-title">🔄 双循环执行模式</div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:12px;">
+      <div style="padding:16px; background:rgba(63,185,80,0.08); border-radius:8px; border:1px solid rgba(63,185,80,0.2);">
+        <strong style="color:var(--green);">⚡ 快循环 System 1</strong>
+        <p style="font-size:13px; margin-top:8px;">实时咨询/查询</p>
+        <p style="font-size:13px; color:var(--text-dim);">用户提问 → RAG 检索 → 研究咨询 Agent → 直接回答（轻量）</p>
+      </div>
+      <div style="padding:16px; background:rgba(240,136,62,0.08); border-radius:8px; border:1px solid rgba(240,136,62,0.2);">
+        <strong style="color:var(--accent3);">🌙 慢循环 System 2</strong>
+        <p style="font-size:13px; margin-top:8px;">定时深度分析/提案</p>
+        <p style="font-size:13px; color:var(--text-dim);">定时触发 → 全 Agent 链 → 共识门禁 → 提案推送 + 操作复盘</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- L1-L7 -->
+<section id="l1-l7">
+  <h2><span class="icon">💾</span> L1-L7 唯一真相 Vault</h2>
+  <p>知识库 Vault 由纯 Markdown 文件和 Frontmatter 构成。Harness 不持有状态，所有状态均存储于 L1-L7 结构化 Markdown 中。</p>
+
+  <div class="layer-grid">
+    <div class="layer-card l1">
+      <div class="layer-name">L1 原始痕迹</div>
+      <div class="layer-path">_inbox/*.md</div>
+      <div class="layer-desc">网页剪报、微信导出、PDF 财报、富途持仓快照、随手记</div>
+    </div>
+    <div class="layer-card l2">
+      <div class="layer-name">L2 原子事实</div>
+      <div class="layer-path">L2-facts/[Ticker]-facts.md</div>
+      <div class="layer-desc">单行自包含陈述，带 UUID 和溯源锚点 <code>&lt;- [文件#页码]</code></div>
+    </div>
+    <div class="layer-card l3">
+      <div class="layer-name">L3 身份画像</div>
+      <div class="layer-path">L3-profile/</div>
+      <div class="layer-desc">Sicong 画像 + 巴菲特/德鲁肯米勒/白毛股神/孙宇晨 4 个大师大脑</div>
+    </div>
+    <div class="layer-card l4">
+      <div class="layer-name">L4 关联网络</div>
+      <div class="layer-path">L4-relations/</div>
+      <div class="layer-desc">宏观传导乘数矩阵 + 产业链上下游依赖图谱</div>
+    </div>
+    <div class="layer-card l5">
+      <div class="layer-name">L5 心智判断</div>
+      <div class="layer-path">L5-judgments/[Ticker]-judgment.md</div>
+      <div class="layer-desc">核心论点 + 估值区间(悲观/中性/乐观 DCF) + 买入假设 + 操作建议</div>
+    </div>
+    <div class="layer-card l6">
+      <div class="layer-name">L6 监控规则</div>
+      <div class="layer-path">L6-alerts/[Ticker]-alerts.md</div>
+      <div class="layer-desc">估值偏离阈值、财务假设红线、止盈止损线</div>
+    </div>
+    <div class="layer-card l7">
+      <div class="layer-name">L7 行动记录</div>
+      <div class="layer-path">L7-actions/trades.md</div>
+      <div class="layer-desc">交易物理记录 + 复盘评价 + 经验教训 + 操作纪律评分</div>
+    </div>
+  </div>
+</section>
+
+<!-- Prompt 层 -->
+<section id="prompt">
+  <h2><span class="icon">🧠</span> Prompt 层：7 个 Agent 的 6P 设计</h2>
+  <p>每个 Agent 遵循 6P 框架：<strong>Persona</strong>（角色）/ <strong>Purpose</strong>（目标）/ <strong>Process</strong>（流程）/ <strong>Policy</strong>（约束）/ <strong>Presentation</strong>（输出格式）/ <strong>Proof</strong>（自检）</p>
+
+  <div class="agent-grid">
+    <!-- Agent 1 -->
+    <div class="agent-card" style="border-left: 4px solid var(--green);">
+      <div class="agent-header">
+        <div class="agent-num" style="background:rgba(63,185,80,0.15); color:var(--green);">1</div>
+        <div class="agent-name">研究咨询 Agent</div>
+        <div class="agent-model">Claude 3.5</div>
+      </div>
+      <div class="ppp-item"><span class="ppp-label">Persona:</span> CFA 估值专家 + 投研顾问</div>
+      <div class="ppp-item"><span class="ppp-label">Purpose:</span> 提炼 L2 事实 · DCF 估值 · L5 提案 · 实时咨询 · 趋势预测</div>
+      <div class="ppp-item"><span class="ppp-label">Policy:</span> 溯源铁律 · 只提案不落盘 · 趋势标注置信度</div>
+      <div class="ppp-item"><span class="ppp-label">Proof:</span> 数字溯源 · WACC 5-15% · g 0-3%</div>
+      <span class="loop-tag loop-both">快循环 + 慢循环</span>
+    </div>
+
+    <!-- Agent 2 -->
+    <div class="agent-card" style="border-left: 4px solid var(--accent);">
+      <div class="agent-header">
+        <div class="agent-num" style="background:rgba(88,166,255,0.15); color:var(--accent);">2</div>
+        <div class="agent-name">情报分析 Agent</div>
+        <div class="agent-model">Gemini Flash</div>
+      </div>
+      <div class="ppp-item"><span class="ppp-label">Persona:</span> 市场情绪分析师</div>
+      <div class="ppp-item"><span class="ppp-label">Purpose:</span> 批量抓取舆情 · 情感分类 · 板块情绪共识强度</div>
+      <div class="ppp-item"><span class="ppp-label">Policy:</span> 仅公开数据 · 标注时效 · 情绪是参考非决策</div>
+      <div class="ppp-item"><span class="ppp-label">Proof:</span> 样本量检查 (&lt;10 条低置信)</div>
+      <span class="loop-tag loop-slow">慢循环</span>
+    </div>
+
+    <!-- Agent 3 -->
+    <div class="agent-card" style="border-left: 4px solid var(--accent5);">
+      <div class="agent-header">
+        <div class="agent-num" style="background:rgba(163,113,247,0.15); color:var(--accent5);">3</div>
+        <div class="agent-name">审计委员会</div>
+        <div class="agent-model">Claude 3.5</div>
+      </div>
+      <div class="ppp-item"><span class="ppp-label">Persona:</span> 三脑合一：白毛股神 + 孙宇晨 + 盲区检测</div>
+      <div class="ppp-item"><span class="ppp-label">Purpose:</span> 多视角审计 L5 提案 · 找逻辑软肋 · 叙事泡沫 · 盲区冲突</div>
+      <div class="ppp-item"><span class="ppp-label">Policy:</span> persona 防火墙 · 三脑独立输出 · 不得互相污染</div>
+      <div class="ppp-item"><span class="ppp-label">Proof:</span> 三脑独立? · 引用 L3? · 盲区全覆盖?</div>
+      <span class="loop-tag loop-slow">慢循环</span>
+    </div>
+
+    <!-- Agent 4 -->
+    <div class="agent-card" style="border-left: 4px solid var(--accent3);">
+      <div class="agent-header">
+        <div class="agent-num" style="background:rgba(240,136,62,0.15); color:var(--accent3);">4</div>
+        <div class="agent-name">IA#1 主提案方</div>
+        <div class="agent-model">Claude 3.5</div>
+      </div>
+      <div class="ppp-item"><span class="ppp-label">Persona:</span> 首席投资官</div>
+      <div class="ppp-item"><span class="ppp-label">Purpose:</span> 整合 Agent 1-3 情报 · 因子衰减 · 生成操作建议草案</div>
+      <div class="ppp-item"><span class="ppp-label">Policy:</span> 安全边际 15% · 个性化强校验 · 高风险标记</div>
+      <div class="ppp-item"><span class="ppp-label">Proof:</span> 安全边际? · 仓位超限? · 盲区冲突?</div>
+      <span class="loop-tag loop-slow">慢循环</span>
+    </div>
+
+    <!-- Agent 5 -->
+    <div class="agent-card" style="border-left: 4px solid var(--red);">
+      <div class="agent-header">
+        <div class="agent-num" style="background:rgba(248,81,73,0.15); color:var(--red);">5</div>
+        <div class="agent-name">IA#2 魔鬼代言人</div>
+        <div class="agent-model">Claude 3.5</div>
+      </div>
+      <div class="ppp-item"><span class="ppp-label">Persona:</span> 风控官 / 魔鬼代言人</div>
+      <div class="ppp-item"><span class="ppp-label">Purpose:</span> 攻击 IA#1 提案 · 悲观 DCF · 共识判定</div>
+      <div class="ppp-item"><span class="ppp-label">Policy:</span> 必须反驳 ≥2 点 · 含差值百分比 · 🔴 拦截待观望</div>
+      <div class="ppp-item"><span class="ppp-label">Proof:</span> ≥2 点反驳? · 差值计算? · 共识合理?</div>
+      <span class="loop-tag loop-slow">慢循环</span>
+    </div>
+
+    <!-- Agent 6 -->
+    <div class="agent-card" style="border-left: 4px solid var(--accent4);">
+      <div class="agent-header">
+        <div class="agent-num" style="background:rgba(247,120,186,0.15); color:var(--accent4);">6</div>
+        <div class="agent-name">操作分析 Agent <span style="font-size:11px; color:var(--green);">NEW</span></div>
+        <div class="agent-model">Claude 3.5</div>
+      </div>
+      <div class="ppp-item"><span class="ppp-label">Persona:</span> 投资行为分析师 + 画像优化顾问</div>
+      <div class="ppp-item"><span class="ppp-label">Purpose:</span> 分析 L7 操作 · 纪律遵从率 · 发现盲区 · L3 画像提案</div>
+      <div class="ppp-item"><span class="ppp-label">Policy:</span> L3 提案制 · 客观不评判 · 盲区需 ≥3 案例支撑</div>
+      <div class="ppp-item"><span class="ppp-label">Proof:</span> 基于 L7? · ≥3 案例? · Diff 格式?</div>
+      <span class="loop-tag loop-both">快循环 + 慢循环</span>
+    </div>
+
+    <!-- Agent 7 -->
+    <div class="agent-card" style="border-left: 4px solid var(--yellow);">
+      <div class="agent-header">
+        <div class="agent-num" style="background:rgba(210,153,34,0.15); color:var(--yellow);">7</div>
+        <div class="agent-name">交易执行 Agent <span style="font-size:11px; color:var(--green);">NEW</span></div>
+        <div class="agent-model">Python + MCP</div>
+      </div>
+      <div class="ppp-item"><span class="ppp-label">Persona:</span> 交易执行员（机械执行，不决策）</div>
+      <div class="ppp-item"><span class="ppp-label">Purpose:</span> 富途 MCP 查询/交易 · L7 自动写入 · 订单监控</div>
+      <div class="ppp-item"><span class="ppp-label">Policy:</span> 绝不决策 · 二次确认门禁 · 紧急熔断 · 失败重试 3 次</div>
+      <div class="ppp-item"><span class="ppp-label">Proof:</span> 共识通过? · Sicong 确认? · L7 写入?</div>
+      <span class="loop-tag loop-both">快循环 + 慢循环 + 持续</span>
+    </div>
+  </div>
+
+  <h3>四级共识等级与推送策略</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>等级</th><th>条件</th><th>推送行为</th><th>标签</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="consensus c-green">🟢 高共识</span></td><td>IA#1 与 IA#2 完全同意</td><td>立即推送，强烈建议执行</td><td><code>强推</code></td></tr>
+        <tr><td><span class="consensus c-yellow">🟡 有条件共识</span></td><td>同意但 IA#2 附加条件</td><td>推送 + 展示附加条件与风险提示</td><td><code>有条件同意</code></td></tr>
+        <tr><td><span class="consensus c-orange">🟠 存在争议</span></td><td>IA#2 有重大异议</td><td>两方观点同时呈现，Sicong 最终裁决</td><td><code>存在争议</code></td></tr>
+        <tr><td><span class="consensus c-red">🔴 强烈反对</span></td><td>IA#2 发现致命缺陷</td><td>暂不推送，等待新数据窗口重新评估</td><td><code>拦截待观望</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Context 层 -->
+<section id="context">
+  <h2><span class="icon">📚</span> Context 层：RAG 混合检索与上下文装配</h2>
+
+  <h3>混合检索管道</h3>
+  <div class="flow">
+    <div class="flow-step" style="border-color: var(--accent);">
+      <strong>用户 Query / Agent 请求</strong>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div style="display:flex; gap:16px;">
+      <div class="flow-step" style="flex:1; border-color: var(--green);">
+        <strong style="color:var(--green);">Dense 语义召回</strong><br>
+        <span style="font-size:13px; color:var(--text-dim);">BAAI/bge-small-zh-v1.5 (384维) · Top K1=15</span>
+      </div>
+      <div class="flow-step" style="flex:1; border-color: var(--accent3);">
+        <strong style="color:var(--accent3);">Sparse 关键词+数字召回</strong><br>
+        <span style="font-size:13px; color:var(--text-dim);">SQLite FTS5 全文索引 · Top K2=15</span>
+      </div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step" style="border-color: var(--accent5); justify-content:center;">
+      <strong style="color:var(--accent5);">RRF 互惠等级融合</strong>
+      <span style="font-size:13px; color:var(--text-dim);">RRF_Score = 1/(60+r_dense) + 1/(60+r_sparse)</span>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step" style="border-color: var(--accent4); justify-content:center;">
+      <strong style="color:var(--accent4);">Re-rank 重排</strong>
+      <span style="font-size:13px; color:var(--text-dim);">Gemini Flash 评分 0-10 · 阈值拦截 &lt;5分 · 精炼 Top N (N≤8, ≤6k tokens)</span>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step" style="border-color: var(--green); justify-content:center;">
+      <strong style="color:var(--green);">注入 Agent Context</strong>
+    </div>
+  </div>
+
+  <h3>动态 Context 装配矩阵</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>触发场景</th><th>触发源</th><th>动态加载的 Vault 上下文</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>快循环：实时咨询</strong></td><td>Sicong 提问</td><td>RAG Top 8 + L5 判断 + L3 画像</td></tr>
+        <tr><td><strong>慢循环：提取 L2</strong></td><td>定时任务</td><td>_inbox/ 未处理文件 + L2 增量比对</td></tr>
+        <tr><td><strong>慢循环：更新 L5</strong></td><td>新增 L2 事实</td><td>L2 全集 + 无风险利率 + 旧 L5</td></tr>
+        <tr><td><strong>慢循环：共识门禁</strong></td><td>L5 提案生成</td><td>L5 + 审计意见 + L3 大师画像 + 情绪</td></tr>
+        <tr><td><strong>慢循环：操作复盘</strong></td><td>季度/平仓</td><td>L7 30/90/180 天 + L3 盲区清单</td></tr>
+        <tr><td><strong>快循环：交易查询</strong></td><td>Sicong 查询</td><td>富途 MCP 实时 + L7 近期记录</td></tr>
+        <tr><td><strong>慢循环：交易执行</strong></td><td>共识+确认</td><td>交易指令 + L5 + L6 假设红线</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Harness 层 -->
+<section id="harness">
+  <h2><span class="icon">🛡️</span> Harness 层：工作流·门禁·Guardrails·富途 MCP</h2>
+
+  <h3>写入门禁权限表（分阶段）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>数据层</th><th>Agent 权限</th><th>早期阶段（当前）</th><th>成熟阶段（后续）</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>L1 _inbox/</strong></td><td>读/写</td><td class="perm-early">Sicong 确认入库</td><td class="perm-mature">零确认（直接追加）</td></tr>
+        <tr><td><strong>L2 L2-facts/</strong></td><td>读/写</td><td class="perm-early">溯源校验 + Sicong 确认</td><td class="perm-mature">溯源校验 + 抽样审阅</td></tr>
+        <tr><td><strong>L3 L3-profile/</strong></td><td>提案制</td><td class="perm-always">强确认（Sicong 拍板）</td><td class="perm-always">强确认（始终需要）</td></tr>
+        <tr><td><strong>L4 L4-relations/</strong></td><td>提案制</td><td class="perm-early">强确认（Sicong 拍板）</td><td class="perm-mature">抽样确认</td></tr>
+        <tr><td><strong>L5 L5-judgments/</strong></td><td>提案制</td><td class="perm-always">强确认（改 approved 才合并）</td><td class="perm-always">强确认（始终需要）</td></tr>
+        <tr><td><strong>L6 L6-alerts/</strong></td><td>提案制</td><td class="perm-early">强确认（Sicong 拍板）</td><td class="perm-mature">抽样确认</td></tr>
+        <tr><td><strong>L7 L7-actions/</strong></td><td>读/写</td><td class="perm-mature">零确认（机械记录）</td><td class="perm-mature">零确认</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>三道 Guardrails 金融专防</h3>
+  <div class="guardrail">
+    <div class="guardrail-num g1">1</div>
+    <div>
+      <strong>正则溯源校验器</strong>
+      <p style="font-size:14px; color:var(--text-dim);">匹配 <code>&lt;- [文件名#页码]</code>，验证源文件和页码在 Context 中存在。失败 → 自检重试 1 次，仍失败则拦截</p>
+    </div>
+  </div>
+  <div class="guardrail">
+    <div class="guardrail-num g2">2</div>
+    <div>
+      <strong>交易一致性校验</strong>
+      <p style="font-size:14px; color:var(--text-dim);">BUY 时 <code>target_price ≤ DCF中性 × 0.85</code>（15% 安全边际）。失败 → 驳回为 HOLD</p>
+    </div>
+  </div>
+  <div class="guardrail">
+    <div class="guardrail-num g3">3</div>
+    <div>
+      <strong>WACC/g 边界断言</strong>
+      <p style="font-size:14px; color:var(--text-dim);">WACC ∈ [5.0%, 15.0%]，永续增长率 g ∈ [0.0%, 3.0%]。超范围 → 拦截，要求重算</p>
+    </div>
+  </div>
+
+  <h3>富途 MCP 集成流程</h3>
+  <div class="flow">
+    <div class="flow-step" style="justify-content:center;"><strong>Sicong 确认交易</strong></div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step" style="border-color:var(--accent4);">
+      <strong>Harness 门禁校验</strong><br>
+      <span style="font-size:13px; color:var(--text-dim);">共识等级检查（🟢🟡 可执行，🟠🔴 拦截）· 高风险二次确认 · 紧急熔断检查</span>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step" style="border-color:var(--yellow);">
+      <strong>富途 MCP 调用</strong><br>
+      <span style="font-size:13px; color:var(--text-dim);">查询：account_info / positions / orders · 交易：place_order(ticker, action, qty, price)</span>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step" style="border-color:var(--red);">
+      <strong>L7 自动写入</strong><br>
+      <span style="font-size:13px; color:var(--text-dim);">[TRADE_xxxx] 时间 | 操作 | Ticker | 数量 | 价格 | 关联L5 | 共识等级</span>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step" style="justify-content:center;"><strong>订单状态监控</strong> <span style="color:var(--text-dim); font-size:13px;">→ 成交/撤单/部分成交 → 更新 L7</span></div>
+  </div>
+</section>
+
+<!-- 业务生命周期 -->
+<section id="lifecycle">
+  <h2><span class="icon">📈</span> 业务生命周期设计</h2>
+
+  <div style="display:grid; grid-template-columns: repeat(3,1fr); gap:16px; margin:20px 0;">
+    <div class="card" style="border-top: 3px solid var(--green);">
+      <div class="card-title" style="color:var(--green);">🔍 未买前：预测与准入</div>
+      <ul style="font-size:14px; margin-left:16px;">
+        <li><strong>买什么</strong>：Agent 1 LLM 判断候选股</li>
+        <li><strong>为什么</strong>：提炼核心假设记录于 L5</li>
+        <li><strong>怎么买</strong>：安全边际 + 建仓步长</li>
+      </ul>
+    </div>
+    <div class="card" style="border-top: 3px solid var(--accent3);">
+      <div class="card-title" style="color:var(--accent3);">📊 已买后：追踪与预警</div>
+      <ul style="font-size:14px; margin-left:16px;">
+        <li><strong>知行合一</strong>：自动转"持仓中"状态</li>
+        <li><strong>假设警报</strong>：L6 锁定财务假设红线</li>
+        <li><strong>变化应对</strong>：假设证伪 → 加/减/清仓</li>
+      </ul>
+    </div>
+    <div class="card" style="border-top: 3px solid var(--red);">
+      <div class="card-title" style="color:var(--red);">卖出操作设计</div>
+      <ul style="font-size:14px; margin-left:16px;">
+        <li><strong>止损触发</strong>：跌破止损线 → 清仓</li>
+        <li><strong>假设断裂</strong>：财报指标跌破红线</li>
+        <li><strong>止盈触发</strong>：超估值中枢 30%+</li>
+        <li><strong>仓位失衡</strong>：单股超上限</li>
+        <li><strong>紧急熔断</strong>：止损线超 5% → 硬止损警报</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 纠错保护 -->
+<section id="protection">
+  <h2><span class="icon">🔐</span> Sicong 强纠错保护机制</h2>
+  <div class="card">
+    <h4>高风险操作二次确认门禁（默认"取消执行"）</h4>
+    <ul style="font-size:14px; margin-left:16px;">
+      <li>追高：价格高于估值中枢 15%+ 仍要买入</li>
+      <li>超仓：单股仓位超出设定上限</li>
+      <li>亏损加仓：持仓亏损 > 8% 还选择加仓</li>
+      <li>极度恐慌期操作（VIX > 30）</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>操作纪律评分系统</h4>
+    <ul style="font-size:14px; margin-left:16px;">
+      <li>每次遵循系统建议 → <span style="color:var(--green);">+1 分</span></li>
+      <li>每次被警告仍坚持 → <span style="color:var(--red);">-1 分</span>，记录案例及后续结果</li>
+      <li>定期报告"本月操作纪律评分"与改进建议</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 确认门禁 -->
+<section id="gates">
+  <h2><span class="icon">🚦</span> 人工确认门禁完整清单（11 类）</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>确认触发条件</th><th>频率</th><th>严重程度</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>L1 原始素材入库确认（早期阶段）</td><td>每次</td><td>⚠️ 普通</td></tr>
+        <tr><td>2</td><td>L2 原子事实确认（早期阶段）</td><td>每次</td><td>⚠️ 普通</td></tr>
+        <tr><td>3</td><td>股票晋级核心池 A（B→A 提案）</td><td>每周 0-3次</td><td>⚠️ 普通</td></tr>
+        <tr><td>4</td><td>Investment Advisor 买入建议（共识 ≥ 🟡）</td><td>每周 0-5次</td><td>⚠️ 普通</td></tr>
+        <tr><td>5</td><td>L5 估值模型参数调整提案</td><td>每季度/每家</td><td>⚠️ 普通</td></tr>
+        <tr><td>6</td><td>持仓假设断裂 → 减仓/止损建议</td><td>不定期</td><td>🔴 重要</td></tr>
+        <tr><td>7</td><td>高风险操作二次确认（Sicong 主动触发）</td><td>触发时</td><td>🔴 重要</td></tr>
+        <tr><td>8</td><td>Sicong 个人画像更新提案（Agent 6 发现新盲区）</td><td>不定期</td><td>⚠️ 普通</td></tr>
+        <tr><td>9</td><td>L4 关联网络更新提案</td><td>不定期</td><td>⚠️ 普通</td></tr>
+        <tr><td>10</td><td>L6 监控规则更新提案</td><td>不定期</td><td>⚠️ 普通</td></tr>
+        <tr><td>11</td><td>宏观乘数矩阵调整提案</td><td>每月 0-1次</td><td>⚠️ 普通</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Vault 结构 -->
+<section id="vault">
+  <h2><span class="icon">📁</span> Obsidian Vault 目录结构</h2>
+  <div class="code-block">
+<pre><span class="comment">touzi-agent-vault/</span>
+├── <span class="func">_inbox/</span>                       <span class="comment"># L1 原始痕迹</span>
+├── <span class="func">L2-facts/</span>                     <span class="comment"># L2 原子事实</span>
+│   └── [Ticker]-facts.md
+├── <span class="func">L3-profile/</span>                   <span class="comment"># L3 身份画像</span>
+│   ├── investor-profile.md       <span class="comment"># Sicong 投资画像</span>
+│   ├── persona-buffett.md        <span class="comment"># 巴菲特模型</span>
+│   ├── persona-druckenmiller.md  <span class="comment"># 德鲁肯米勒模型</span>
+│   ├── persona-serenity.md       <span class="comment"># 白毛股神模型</span>
+│   └── persona-sun.md            <span class="comment"># 孙宇晨模型</span>
+├── <span class="func">L4-relations/</span>                 <span class="comment"># L4 关联网络</span>
+├── <span class="func">L5-judgments/</span>                 <span class="comment"># L5 心智判断</span>
+├── <span class="func">L6-alerts/</span>                    <span class="comment"># L6 监控规则</span>
+├── <span class="func">L7-actions/</span>                   <span class="comment"># L7 行动记录</span>
+│   └── trades.md
+├── <span class="func">_home.md</span>                      <span class="comment"># Sicong 日常视图</span>
+├── <span class="func">harness/</span>                      <span class="comment"># Harness 层</span>
+│   ├── permissions.md            <span class="comment"># 写入门禁权限表</span>
+│   ├── workflows/                <span class="comment"># 工作流定义</span>
+│   └── scripts/
+│       ├── guardrail_runner.py   <span class="comment"># Guardrails 执行器</span>
+│       └── vault_check.py        <span class="comment"># Vault 自检脚本</span>
+├── <span class="func">proposals/</span>                    <span class="comment"># 待审核提案临时区</span>
+└── <span class="func">archive/</span>                      <span class="comment"># 历史提案归档</span></pre>
+  </div>
+</section>
+
+<!-- 自检清单 -->
+<section id="verify">
+  <h2><span class="icon">✅</span> 落地与自检清单（8 项断言）</h2>
+  <div class="card">
+    <ol style="font-size:14px; margin-left:20px;">
+      <li><strong>断链检测</strong>：L5 提案引用的 L2-facts 文件必须物理存在</li>
+      <li><strong>门禁强验证</strong>：模拟恶意 LLM 改 L5 status: approved，Harness 必须拦截</li>
+      <li><strong>WACC 边界断言</strong>：WACC ∈ [5.0%, 15.0%]，g ∈ [0.0%, 3.0%]</li>
+      <li><strong>溯源锚点验证</strong>：L2 事实必须含 <code>&lt;- [文件#页码]</code>，源文件在 Context 中存在</li>
+      <li><strong>共识等级一致性</strong>：推送提案的共识等级与 IA#1/IA#2 输出一致</li>
+      <li><strong>富途 MCP 连通性</strong>：交易前验证查询/交易/监控三通道可用</li>
+      <li><strong>L7 即时写入</strong>：成交后 1 秒内追加 L7 记录，延迟告警</li>
+      <li><strong>画像提案 Diff 格式</strong>：Agent 6 的 L3 更新提案可被 <code>git apply</code> 解析</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 版本差异 -->
+<section id="diff">
+  <h2><span class="icon">📋</span> 与 V1.5 / V2 的差异说明</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>维度</th><th>V1.5</th><th>V2</th><th>V3（本规格）</th></tr></thead>
+      <tbody>
+        <tr><td><strong>架构模型</strong></td><td>6 Agent + L1-L7</td><td>三层 + L1-L7</td><td><strong>同心圆三层 + 双循环 + L1-L7</strong></td></tr>
+        <tr><td><strong>Agent 数量</strong></td><td>6</td><td>5</td><td><strong>7</strong></td></tr>
+        <tr><td><strong>量化筛选</strong></td><td>Python 量化初筛</td><td>引用未详述</td><td><strong>移除，改用 LLM 判断</strong></td></tr>
+        <tr><td><strong>趋势预测</strong></td><td>无</td><td>无</td><td><strong>Agent 1 新增</strong></td></tr>
+        <tr><td><strong>操作分析</strong></td><td>无</td><td>无</td><td><strong>Agent 6 新增</strong></td></tr>
+        <tr><td><strong>富途集成</strong></td><td>无</td><td>无</td><td><strong>Agent 7 + 富途 MCP</strong></td></tr>
+        <tr><td><strong>写入门禁</strong></td><td>简单分层</td><td>固定权限表</td><td><strong>分阶段权限</strong></td></tr>
+        <tr><td><strong>双循环</strong></td><td>无</td><td>无</td><td><strong>System 1 + System 2</strong></td></tr>
+        <tr><td><strong>Guardrails</strong></td><td>无</td><td>三道防线</td><td><strong>三道防线（细化）</strong></td></tr>
+        <tr><td><strong>共识门禁</strong></td><td>4 级共识</td><td>简化</td><td><strong>4 级共识（保留）</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</div>
+
+<div class="footer">
+  <p>投资研究 AI 系统规格说明书 V3 · 2026-06-18 · 同心圆三层 + 双循环 + L1-L7 统一架构</p>
+</div>
+
+</body>
+</html>

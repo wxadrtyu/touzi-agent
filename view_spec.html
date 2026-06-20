@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投研 AI 规格说明书 (V2) - 浏览器在线阅览</title>
+    <!-- Tailwind CSS with Typography Plugin -->
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0d1117',
+                        sideBg: '#161b22',
+                        brandPurple: '#8a2be2',
+                        brandBlue: '#58a6ff'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Marked.js (Markdown Parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Prism.js (Code Highlighting) -->
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+        }
+        pre, code {
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+        /* 美化侧边栏滚动条 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="text-gray-300 min-h-screen flex">
+
+    <!-- 左侧：目录侧边栏 (TOC) -->
+    <aside class="w-80 bg-sideBg border-r border-gray-800 flex flex-col h-screen sticky top-0 hidden md:flex">
+        <div class="p-6 border-b border-gray-800 flex justify-between items-center">
+            <div>
+                <h2 class="text-white font-bold text-sm tracking-wider uppercase">规格书导航目录</h2>
+                <p class="text-[10px] text-gray-500 mt-0.5">SPECIFICATION V2 - THREE LAYER</p>
+            </div>
+            <span class="text-xs bg-brandPurple/20 border border-brandPurple/40 text-purple-300 px-2 py-0.5 rounded-full mono">V2 Spec</span>
+        </div>
+        <nav class="flex-1 overflow-y-auto p-6 custom-scrollbar text-xs space-y-4" id="tocContainer">
+            <!-- 动态生成目录 -->
+            <div class="text-gray-500 italic">正在解析目录中...</div>
+        </nav>
+        <div class="p-4 border-t border-gray-800 text-[10px] text-gray-500 flex justify-between">
+            <span>唯一真相: Vault Root</span>
+            <span class="text-brandBlue font-mono">G:/touzi-agent/</span>
+        </div>
+    </aside>
+
+    <!-- 右侧：Markdown 内容主体 -->
+    <main class="flex-1 min-w-0 overflow-y-auto h-screen p-6 md:p-12 lg:px-24">
+        <!-- 头部浮动控制栏 -->
+        <div class="max-w-4xl mx-auto mb-8 flex justify-between items-center border-b border-gray-800 pb-4">
+            <div class="flex items-center gap-3">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-brandBlue"></span>
+                <span class="text-xs text-gray-400 font-mono">docs/spec-v2-three-layer.md</span>
+            </div>
+            <button class="text-xs text-brandBlue hover:underline flex items-center gap-1" onclick="window.print()">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                打印 / 导出 PDF
+            </button>
+        </div>
+
+        <!-- Markdown 渲染区 -->
+        <article class="max-w-4xl mx-auto prose prose-invert prose-blue prose-sm md:prose-base 
+            prose-headings:text-white prose-headings:font-bold prose-a:text-brandBlue prose-a:no-underline hover:prose-a:underline
+            prose-pre:bg-[#161b22] prose-pre:border prose-pre:border-gray-800 prose-blockquote:border-brandPurple" id="markdownContent">
+            <div class="text-center py-20">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-brandBlue mb-4"></div>
+                <p class="text-gray-400 text-sm">正在加载并解析规格说明书文档...</p>
+            </div>
+        </article>
+    </main>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const mdContainer = document.getElementById("markdownContent");
+            const tocContainer = document.getElementById("tocContainer");
+
+            try {
+                // 1. 获取本地 Markdown 规格书内容
+                const response = await fetch("/docs/spec-v2-three-layer.md");
+                if (!response.ok) throw new Error("规格书文件未找到，请确认 docs/spec-v2-three-layer.md 存在。");
+                const markdownText = await response.text();
+
+                // 2. 将 Markdown 解析为 HTML
+                const parsedHtml = marked.parse(markdownText);
+                mdContainer.innerHTML = parsedHtml;
+
+                // 3. 动态触发 Prism.js 渲染高亮代码块
+                Prism.highlightAll();
+
+                // 4. 提取 Heading 动态生成 TOC 目录树
+                generateTOC();
+
+            } catch (err) {
+                mdContainer.innerHTML = `
+                    <div class="bg-red-900/20 border border-red-500/30 text-red-200 p-6 rounded-xl text-center">
+                        <svg class="w-12 h-12 text-red-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <h3 class="font-bold text-base mb-1">加载错误</h3>
+                        <p class="text-xs text-red-400">${err.message}</p>
+                    </div>
+                `;
+            }
+        });
+
+        // 提取标题并生成 TOC
+        function generateTOC() {
+            const headings = document.querySelectorAll("#markdownContent h2, #markdownContent h3");
+            const tocContainer = document.getElementById("tocContainer");
+            tocContainer.innerHTML = "";
+
+            if (headings.length === 0) {
+                tocContainer.innerHTML = `<span class="text-gray-500">无可用标题导航</span>`;
+                return;
+            }
+
+            const navList = document.createElement("ul");
+            navList.className = "space-y-3";
+
+            headings.forEach((heading, index) => {
+                // 确保标题有唯一的 ID 用于锚点定位
+                const id = heading.id || `heading-${index}`;
+                heading.id = id;
+
+                const listItem = document.createElement("li");
+                const link = document.createElement("a");
+                link.href = `#${id}`;
+                link.textContent = heading.textContent;
+                link.className = "hover:text-brandBlue transition duration-150 block truncate";
+
+                // 根据标题层级缩进
+                if (heading.tagName === "H2") {
+                    link.className += " font-bold text-gray-200";
+                    listItem.className = "pt-2 border-t border-gray-800/60 first:border-0 first:pt-0";
+                } else if (heading.tagName === "H3") {
+                    link.className += " text-gray-400 pl-4 border-l border-gray-800";
+                }
+
+                listItem.appendChild(link);
+                navList.appendChild(listItem);
+            });
+
+            tocContainer.appendChild(navList);
+        }
+    </script>
+</body>
+</html>

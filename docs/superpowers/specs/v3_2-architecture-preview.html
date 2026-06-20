@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V3.2 投研 Agent 架构设计</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.7;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a1f35 0%, #0d1117 100%);
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.2em;
+            color: #58a6ff;
+            margin-bottom: 12px;
+        }
+        .header .subtitle { color: #8b949e; font-size: 1.1em; }
+        .header .meta {
+            margin-top: 16px;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 20px;
+            padding: 4px 16px;
+            font-size: 0.85em;
+            color: #8b949e;
+        }
+        .badge.green { border-color: #3fb950; color: #3fb950; }
+        .badge.blue { border-color: #58a6ff; color: #58a6ff; }
+        .badge.orange { border-color: #d29922; color: #d29922; }
+
+        /* Section */
+        .section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+        .section h2 {
+            color: #58a6ff;
+            font-size: 1.6em;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #30363d;
+        }
+        .section h3 {
+            color: #d29922;
+            font-size: 1.25em;
+            margin: 24px 0 12px 0;
+        }
+        .section h4 {
+            color: #f0883e;
+            font-size: 1.1em;
+            margin: 16px 0 8px 0;
+        }
+        .section p { margin-bottom: 12px; }
+        .section ul, .section ol { margin-left: 24px; margin-bottom: 12px; }
+        .section li { margin-bottom: 6px; }
+
+        /* Architecture Diagram */
+        .arch-diagram {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 24px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            overflow-x: auto;
+            white-space: pre;
+            color: #8b949e;
+            line-height: 1.4;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 0.9em;
+        }
+        th {
+            background: #21262d;
+            color: #58a6ff;
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #30363d;
+            font-weight: 600;
+        }
+        td {
+            padding: 10px 12px;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+        }
+        tr:nth-child(even) td { background: #161b22; }
+
+        /* Code block */
+        pre {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+        code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+        }
+        pre code { color: #c9d1d9; }
+        :not(pre) > code {
+            background: #21262d;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #f0883e;
+        }
+
+        /* Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+        .card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .card.highlight { border-color: #58a6ff; }
+        .card.warning { border-color: #d29922; }
+        .card.danger { border-color: #f85149; }
+        .card.success { border-color: #3fb950; }
+        .card h4 { margin-top: 0; }
+        .card .icon { font-size: 1.5em; margin-bottom: 8px; }
+
+        /* Layer diagram */
+        .layer-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 16px 0;
+        }
+        .layer {
+            border-radius: 8px;
+            padding: 16px 24px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .layer-outer { background: #1a2332; border: 2px solid #58a6ff; color: #58a6ff; }
+        .layer-middle { background: #1a2a1a; border: 2px solid #3fb950; color: #3fb950; margin: 0 40px; }
+        .layer-inner { background: #2a2018; border: 2px solid #d29922; color: #d29922; margin: 0 80px; }
+        .layer-base { background: #1a1a2a; border: 2px solid #a371f7; color: #a371f7; margin: 0 20px; }
+
+        /* Agent flow */
+        .agent-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 16px 0;
+        }
+        .agent-box {
+            background: #21262d;
+            border: 2px solid #58a6ff;
+            border-radius: 8px;
+            padding: 12px 20px;
+            text-align: center;
+            min-width: 140px;
+        }
+        .agent-box .num { font-size: 1.5em; color: #58a6ff; font-weight: bold; }
+        .agent-box .name { color: #c9d1d9; font-size: 0.9em; }
+        .arrow { color: #8b949e; font-size: 1.5em; }
+
+        /* Guardrail badges */
+        .guardrail-hard {
+            background: #3d1418;
+            border: 1px solid #f85149;
+            color: #f85149;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            display: inline-block;
+            margin: 2px;
+        }
+        .guardrail-soft {
+            background: #3d2a14;
+            border: 1px solid #d29922;
+            color: #d29922;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            display: inline-block;
+            margin: 2px;
+        }
+
+        /* Consensus levels */
+        .consensus { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 0.85em; margin: 2px; }
+        .consensus.green { background: #1a3d1a; color: #3fb950; }
+        .consensus.yellow { background: #3d3d1a; color: #d29922; }
+        .consensus.orange { background: #3d2a14; color: #f0883e; }
+        .consensus.red { background: #3d1418; color: #f85149; }
+
+        /* Diff table */
+        .diff-table td:nth-child(2) { color: #f85149; text-decoration: line-through; opacity: 0.7; }
+        .diff-table td:nth-child(3) { color: #3fb950; }
+
+        /* Nav */
+        .nav {
+            position: sticky;
+            top: 20px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        .nav a {
+            color: #58a6ff;
+            text-decoration: none;
+            font-size: 0.85em;
+            padding: 4px 12px;
+            border-radius: 4px;
+            background: #21262d;
+        }
+        .nav a:hover { background: #30363d; }
+
+        .highlight-box {
+            background: #1a2332;
+            border-left: 4px solid #58a6ff;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 4px;
+        }
+        .highlight-box.green { border-color: #3fb950; background: #1a2a1a; }
+        .highlight-box.orange { border-color: #d29922; background: #2a2018; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <h1>股票投研 Agent 系统设计规范 V3.2</h1>
+        <div class="subtitle">同心圆三层 · 双循环 · Market Adapter · CoT 自我辩论 · 快速反馈循环</div>
+        <div class="meta">
+            <span class="badge">2026-06-18</span>
+            <span class="badge green">Proposed</span>
+            <span class="badge blue">美股 + A股</span>
+            <span class="badge orange">V3.1 → V3.2</span>
+        </div>
+    </div>
+
+    <!-- Nav -->
+    <div class="nav">
+        <a href="#s0">架构总览</a>
+        <a href="#s1">L1-L7 数据层</a>
+        <a href="#s2">Market Adapter</a>
+        <a href="#s3">Prompt 层 (4 Agent)</a>
+        <a href="#s4">Context 层</a>
+        <a href="#s5">Harness 层</a>
+        <a href="#s6">业务生命周期</a>
+        <a href="#s7">强纠错保护</a>
+        <a href="#s8">确认门禁</a>
+        <a href="#s9">Vault 目录</a>
+        <a href="#s11">V3.1→V3.2 差异</a>
+        <a href="#s12">数据源清单</a>
+    </div>
+
+    <!-- Section 0: Architecture Overview -->
+    <div class="section" id="s0">
+        <h2>0. 架构总览</h2>
+
+        <h3>同心圆三层 + 双循环 + Market Adapter</h3>
+        <div class="layer-stack">
+            <div class="layer layer-outer">Harness 层（外层·运行保障）：快循环 | 慢循环 | Guardrails | 富途 MCP</div>
+            <div class="layer layer-middle">Context 层（中层·信息供给）：RAG 检索 | 混合 Re-rank | 上下文装配 | 快速反馈循环</div>
+            <div class="layer layer-inner">Prompt 层（内层·指令设计）：Agent 1 研究 | Agent 2 决策 | Agent 3 反思 | Agent 4 执行</div>
+            <div class="layer layer-base">Market Adapter 层：US Adapter | CN Adapter</div>
+            <div class="layer layer-base" style="margin: 0 40px;">L1-L7 数据层（地基·持久化记忆）</div>
+        </div>
+
+        <h3>双循环设计</h3>
+        <table>
+            <tr><th>循环</th><th>频率</th><th>触发</th><th>工作流</th></tr>
+            <tr><td><strong>快循环</strong></td><td>每日</td><td>定时（盘前/盘后）</td><td>行情扫描 → 持仓监控 → L6 阈值检查 → 异动预警 → （触发时）进入慢循环</td></tr>
+            <tr><td><strong>慢循环</strong></td><td>每周/触发式</td><td>快循环触发 / Sicong 请求 / 财报发布</td><td>候选筛选 → 研究分析（五段式） → 决策（CoT 辩论） → Guardrails → Sicong 确认 → 执行 → 反思</td></tr>
+        </table>
+
+        <h3>V3.2 核心设计原则</h3>
+        <div class="card-grid">
+            <div class="card highlight">
+                <div class="icon">1</div>
+                <h4>投资建议优先</h4>
+                <p>五段式产业链研究是生产投资建议的前置过程，最终产出仍是投资建议</p>
+            </div>
+            <div class="card success">
+                <div class="icon">2</div>
+                <h4>少即是多</h4>
+                <p>4 个 Agent 而非 7 个，五段式单次调用，CoT 自我辩论</p>
+            </div>
+            <div class="card success">
+                <div class="icon">3</div>
+                <h4>上下文质量 > 流程严谨</h4>
+                <p>80% 精力投入 Context 层，15% Prompt 层，5% Guardrails</p>
+            </div>
+            <div class="card warning">
+                <div class="icon">4</div>
+                <h4>市场差异在 Context 层</h4>
+                <p>Agent 核心逻辑市场无关，差异由 Market Adapter + 配置注入</p>
+            </div>
+            <div class="card warning">
+                <div class="icon">5</div>
+                <h4>快速反馈</h4>
+                <p>拒绝原因即时回写 Context，比任何 Guardrails 都有效</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 1: L1-L7 -->
+    <div class="section" id="s1">
+        <h2>1. L1-L7 数据层定义</h2>
+        <table>
+            <tr><th>层级</th><th>定位</th><th>数据载体</th><th>V3.2 变化</th></tr>
+            <tr><td><strong>L1</strong></td><td>原始痕迹层</td><td>财报 PDF 切片、K线数据、公告原文</td><td>无变化</td></tr>
+            <tr><td><strong>L2</strong></td><td>原子事实层</td><td>标准财务因子、宏观指标</td><td><span style="color:#3fb950">新增 evidence_level 字段</span></td></tr>
+            <tr><td><strong>L3</strong></td><td>认知画像层</td><td>sicong.md + 5 大脑 + 市场画像</td><td><span style="color:#3fb950">新增 market-us.md / market-cn.md</span></td></tr>
+            <tr><td><strong>L4</strong></td><td>关联网络层</td><td>宏观乘数、供应链图谱</td><td><span style="color:#3fb950">新增 bottleneck-map</span></td></tr>
+            <tr><td><strong>L5</strong></td><td>心智与价值判断</td><td>投资建议、估值、假设</td><td><span style="color:#3fb950">新增底层逻辑三问 + C0-C4 定位</span></td></tr>
+            <tr><td><strong>L6</strong></td><td>监控与规则触发</td><td>估值偏离阈值、假设红线</td><td><span style="color:#3fb950">新增 tracking-table</span></td></tr>
+            <tr><td><strong>L7</strong></td><td>行动与交易历史</td><td>操作日志、复盘评价</td><td><span style="color:#3fb950">新增 rejection-reason 字段</span></td></tr>
+        </table>
+    </div>
+
+    <!-- Section 2: Market Adapter -->
+    <div class="section" id="s2">
+        <h2>2. Market Adapter 层（V3.2 新增）</h2>
+
+        <h3>设计原则：一套核心 + 两套配置 + 两套适配器</h3>
+        <div class="arch-diagram">核心层（一套，市场无关）          配置层（两套）           适配器层（两套）
+┌─────────────────────┐     ┌──────────────┐     ┌──────────────────┐
+│ research_agent.py   │────→│ market-us.yaml│────→│ data_us.py       │
+│ decision_agent.py   │     │ market-cn.yaml│────→│ data_cn.py       │
+│ reflection_agent.py │     └──────────────┘     │ trading_us.py    │
+│ execute_agent.py    │                          │ trading_cn.py    │
+└─────────────────────┘                          └──────────────────┘
+  90% 逻辑共享              市场参数差异             与外部 API 交互</div>
+
+        <h3>美股 vs A股 配置对比</h3>
+        <table>
+            <tr><th>配置项</th><th>美股 (US)</th><th>A股 (CN)</th></tr>
+            <tr><td>会计准则</td><td>US GAAP</td><td>China ASBE</td></tr>
+            <tr><td>交易制度</td><td>T+0</td><td>T+1</td></tr>
+            <tr><td>涨跌停</td><td>无</td><td>主板 ±10% / 科创创业 ±20%</td></tr>
+            <tr><td>做空</td><td>允许</td><td>受限（融券难）</td></tr>
+            <tr><td>估值偏好</td><td>DCF + PEG</td><td>PE-Band + PB-Band</td></tr>
+            <tr><td>政策溢价</td><td>低</td><td>高</td></tr>
+            <tr><td>公告源</td><td>SEC EDGAR</td><td>巨潮资讯网</td></tr>
+            <tr><td>行情源</td><td>Yahoo Finance</td><td>东方财富</td></tr>
+            <tr><td>持仓源</td><td>13F</td><td>北向资金 / 融资融券</td></tr>
+            <tr><td>特殊规则</td><td>无</td><td>涨停板 / 龙虎榜 / 限售解禁</td></tr>
+        </table>
+
+        <h3>叙事领袖泛化（可配置）</h3>
+        <div class="highlight-box">
+            <p>叙事领袖不再硬编码，改为配置驱动。初版配置 3 位，未来可添加更多。</p>
+        </div>
+        <table>
+            <tr><th>叙事领袖</th><th>别名</th><th>叙事类型</th><th>原始证据等级</th><th>特殊处理</th></tr>
+            <tr><td>黄仁勋</td><td>老黄 / Jensen</td><td>AI算力 / GPU / 芯片</td><td>D</td><td>可作线索参考</td></tr>
+            <tr><td>孙宇晨</td><td>孙哥 / Justin Sun</td><td>加密货币 / 叙事炒作</td><td>D</td><td>可作线索参考</td></tr>
+            <tr><td>特朗普</td><td>Trump</td><td>政策 / 宏观 / 地缘政治</td><td>D</td><td>可作线索参考</td></tr>
+        </table>
+    </div>
+
+    <!-- Section 3: Prompt Layer -->
+    <div class="section" id="s3">
+        <h2>3. Prompt 层 — 4 个 Agent</h2>
+
+        <h3>Agent 总览（V3.2: 7→4 精简）</h3>
+        <div class="agent-flow">
+            <div class="agent-box">
+                <div class="num">1</div>
+                <div class="name">研究分析<br><small>五段式单次调用</small></div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="agent-box">
+                <div class="num">2</div>
+                <div class="name">决策<br><small>CoT 自我辩论</small></div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="agent-box">
+                <div class="num">3</div>
+                <div class="name">操作分析<br><small>反思 + 纪律</small></div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="agent-box">
+                <div class="num">4</div>
+                <div class="name">交易执行<br><small>富途 MCP</small></div>
+            </div>
+        </div>
+
+        <table>
+            <tr><th>#</th><th>Agent</th><th>职责</th><th>模型</th><th>V3.1 对应</th></tr>
+            <tr><td><strong>1</strong></td><td>研究分析 Agent</td><td>五段式产业链研究 + 估值 + 趋势预测。单次调用完成全部五段</td><td>Claude 3.5 Sonnet</td><td>合并 V3.1 Agent 1+2+3</td></tr>
+            <tr><td><strong>2</strong></td><td>决策 Agent</td><td>CoT 自我辩论（正方→反方→综合），输出投资建议 + 共识等级</td><td>Claude 3.5 Sonnet</td><td>合并 V3.1 Agent 4+5</td></tr>
+            <tr><td><strong>3</strong></td><td>操作分析 Agent</td><td>操作纪律评分、复盘总结、拒绝原因分析</td><td>Claude 3.5 Sonnet</td><td>V3.1 Agent 6</td></tr>
+            <tr><td><strong>4</strong></td><td>交易执行 Agent</td><td>富途 MCP 下单、持仓同步、T+1/涨跌停检查</td><td>Python + 富途 MCP</td><td>V3.1 Agent 7</td></tr>
+        </table>
+
+        <h3>Agent 1: 五段式 Prompt 模板（单次调用）</h3>
+        <div class="highlight-box green">
+            <p><strong>关键改进</strong>：五段式作为单个 Prompt 模板，1 次 LLM 调用完成全部五段。不是 5 次独立调用。LLM 在做红队证伪（第三段）时能直接回看产业链拆解（第一段）的全部推理过程，零信息丢失。</p>
+        </div>
+
+        <h4>五段流程</h4>
+        <ol>
+            <li><strong>产业链拆解（C0-C4）</strong>：终端需求 → 系统集成 → 核心部件 → 材料工艺 → 上游资源</li>
+            <li><strong>证据复筛</strong>：候选公司逐个检查，标注 A/B/C/D 证据等级</li>
+            <li><strong>红队证伪</strong>：反向审查 5 个标准问题</li>
+            <li><strong>防幻觉检查</strong>：拎出可能夸大的结论</li>
+            <li><strong>综合判断</strong>：底层逻辑三问 + DCF 估值 + 投资建议 + 跟踪表</li>
+        </ol>
+
+        <h3>Agent 2: CoT 自我辩论</h3>
+        <div class="highlight-box green">
+            <p><strong>关键改进</strong>：单 Agent CoT 自我辩论替代双 IA 分 Agent。同一个 Agent 在完整上下文中"先正方再反方再综合"，零信息损失。LLM 的 CoT 能力就是为此设计的。</p>
+        </div>
+
+        <h4>CoT 三步</h4>
+        <div class="card-grid">
+            <div class="card success">
+                <h4>第一步：正方论证</h4>
+                <p>IA#1 视角：论证为什么 Sicong 应该执行这个建议</p>
+            </div>
+            <div class="card danger">
+                <h4>第二步：反方反驳</h4>
+                <p>IA#2 视角：逐条审查漏洞，必须提出至少 3 个实质性反驳</p>
+            </div>
+            <div class="card highlight">
+                <h4>第三步：综合判断</h4>
+                <p>基于正反双方观点，给出共识等级 + 最终建议</p>
+            </div>
+        </div>
+
+        <h4>共识等级</h4>
+        <p>
+            <span class="consensus green">🟢 高共识：立即推送，强推</span>
+            <span class="consensus yellow">🟡 有条件共识：推送 + 附加条件</span>
+            <span class="consensus orange">🟠 存在争议：Sicong 裁决</span>
+            <span class="consensus red">🔴 强烈反对：拦截待观望</span>
+        </p>
+    </div>
+
+    <!-- Section 4: Context Layer -->
+    <div class="section" id="s4">
+        <h2>4. Context 层 — RAG 检索与上下文装配</h2>
+
+        <h3>RAG 检索流程</h3>
+        <div class="arch-diagram">用户问题 / 标的分析请求
+          ↓
+向量检索 (ChromaDB) + 结构化查询 (SQLite)
+  ├─ 财报切片（A级） ├─ 电话会纪要（A/B级）
+  ├─ 研报切片（C级） ├─ 舆情切片（D级）
+  ├─ 财务因子查询    └─ L7 历史操作查询
+          ↓
+混合 Re-rank (Gemini Flash)
+  ├─ 语义相关性评分 0-10
+  ├─ 证据等级标注（A/B/C/D）
+  └─ 时间衰减
+          ↓
+上下文装配（按场景选择装配矩阵）
+          ↓
+长度控制（Tier 1/2/3 压缩）→ 注入 Prompt</div>
+
+        <h3>上下文装配矩阵</h3>
+        <table>
+            <tr><th>场景</th><th>注入内容</th><th>长度预算</th></tr>
+            <tr><td>深度研究</td><td>L2 全部事实 + L4 产业链图谱 + L3 画像 + L7 历史 + L5 拒绝原因</td><td>100K tokens</td></tr>
+            <tr><td>实时咨询</td><td>L2 核心事实 + L5 当前估值 + L6 当前假设 + L3 画像</td><td>30K tokens</td></tr>
+            <tr><td>持仓监控</td><td>L6 阈值 + L2 最新事实 + 实时行情</td><td>10K tokens</td></tr>
+            <tr><td>趋势预测</td><td>L2 历史因子 + L4 宏观乘数 + L3 大佬画像</td><td>20K tokens</td></tr>
+        </table>
+
+        <h3>快速反馈循环（V3.2 新增）</h3>
+        <div class="highlight-box orange">
+            <p><strong>最重要的改进</strong>：每次 Sicong 拒绝提案后，拒绝原因即时回写 Context。下次同类标的分析时注入："上次你建议买入 XXX，Sicong 拒绝了，原因是'{reason}'。本次分析时请注意避免类似问题。" 这个反馈循环比任何 Guardrails 都有效。</p>
+        </div>
+
+        <h3>证据等级标注（V3.2: 无硬编码权重）</h3>
+        <div class="highlight-box">
+            <p><strong>初版不设任何软引导</strong>，完全交给 LLM 判断。保留配置入口 <code>evidence_weights.yaml</code> 供后期添加（初版 <code>enabled: false</code>）。</p>
+        </div>
+        <table>
+            <tr><th>等级</th><th>含义</th><th>处理方式</th></tr>
+            <tr><td><strong>A</strong></td><td>公告 / 年报</td><td>核心证据，可直接作结论</td></tr>
+            <tr><td><strong>B</strong></td><td>调研 / 管理层交流</td><td>辅助判断，需交叉验证</td></tr>
+            <tr><td><strong>C</strong></td><td>研报 / 媒体</td><td>仅参考，需 A/B 级支撑</td></tr>
+            <tr><td><strong>D</strong></td><td>社交媒体</td><td>仅线索，不能作结论（叙事领袖除外）</td></tr>
+        </table>
+    </div>
+
+    <!-- Section 5: Harness Layer -->
+    <div class="section" id="s5">
+        <h2>5. Harness 层 — 工作流·Guardrails</h2>
+
+        <h3>Guardrails 分级（V3.2: 硬阻塞 + 软警告）</h3>
+        <div class="highlight-box green">
+            <p><strong>关键改进</strong>：只有数学硬规则阻塞，不会误判。软警告让 Sicong 有更多信息做判断。真正的安全网是 Sicong 确认。</p>
+        </div>
+        <table>
+            <tr><th>Guardrail</th><th>类型</th><th>行为</th><th>理由</th></tr>
+            <tr><td>第一道：溯源校验</td><td><span class="guardrail-soft">🟡 软警告</span></td><td>不拦截，标注 <code>⚠️ 引用待核验</code></td><td>引用格式多变，正则误判率高</td></tr>
+            <tr><td>第二道：交易一致性</td><td><span class="guardrail-hard">🔴 硬阻塞</span></td><td>拦截，强制改 HOLD</td><td>数学硬规则，安全边际不能妥协</td></tr>
+            <tr><td>第三道：WACC/g 边界</td><td><span class="guardrail-hard">🔴 硬阻塞</span></td><td>拦截，要求重算</td><td>数学硬规则，估值参数不能超范围</td></tr>
+            <tr><td>第四道：防幻觉</td><td><span class="guardrail-soft">🟡 软警告</span></td><td>不拦截，附防幻觉检查报告</td><td>判断题不是数学题，LLM 标注比正则拦截更有用</td></tr>
+        </table>
+
+        <h3>慢循环工作流</h3>
+        <div class="arch-diagram">触发：快循环异动 / Sicong 主动请求 / 财报发布
+  ↓
+候选筛选（Python 量化，0 Token）
+  ↓
+Agent 1: 研究分析（五段式单次调用）
+  ↓
+Agent 2: 决策（CoT 自我辩论单次调用）
+  ↓
+Guardrails 检查（2 硬阻塞 + 2 软警告）
+  ↓
+Sicong 确认门禁
+  ├─ 确认 → Agent 4: 交易执行
+  └─ 拒绝 → Agent 3: 拒绝原因分析 → 回写 Context
+  ↓
+Agent 3: 操作记录 + 纪律评分</div>
+    </div>
+
+    <!-- Section 6: Business Lifecycle -->
+    <div class="section" id="s6">
+        <h2>6. 业务生命周期设计</h2>
+        <div class="card-grid">
+            <div class="card highlight">
+                <h4>未买前：预测与准入</h4>
+                <ul>
+                    <li>买什么：量价/流动性初筛 + 安全边际</li>
+                    <li>为什么：五段式研究提炼核心假设</li>
+                    <li>怎么买：买入击球区 + 建仓步长</li>
+                </ul>
+            </div>
+            <div class="card success">
+                <h4>已买后：追踪与预警</h4>
+                <ul>
+                    <li>知行合一追踪：持仓状态自动转换</li>
+                    <li>锁定假设警报线 (L6)</li>
+                    <li>假设证伪 → 操作预警</li>
+                </ul>
+            </div>
+            <div class="card danger">
+                <h4>卖出操作</h4>
+                <ul>
+                    <li>止损触发：跌破止损线</li>
+                    <li>假设断裂：财报指标跌破红线</li>
+                    <li>止盈触发：超过估值中枢 30%+</li>
+                    <li>仓位失衡：单股仓位超上限</li>
+                </ul>
+            </div>
+        </div>
+        <div class="highlight-box orange">
+            <p><strong>紧急熔断例外</strong>：价格跌破止损线超过 5%，无需共识投票，直接推送红色硬止损警报。</p>
+        </div>
+    </div>
+
+    <!-- Section 7: Protection -->
+    <div class="section" id="s7">
+        <h2>7. Sicong 强纠错保护机制</h2>
+        <div class="card-grid">
+            <div class="card danger">
+                <h4>高风险操作二次确认</h4>
+                <p>默认选项为"取消执行"：</p>
+                <ul>
+                    <li>追高：高于估值中枢 15%+</li>
+                    <li>超仓：单股仓位超上限</li>
+                    <li>亏损加仓：亏损 > 8%</li>
+                    <li>极度恐慌：VIX > 30</li>
+                </ul>
+            </div>
+            <div class="card warning">
+                <h4>个人画像盲区检测</h4>
+                <ul>
+                    <li>资金规模、风险边界、持仓上限</li>
+                    <li>投资风格、历史盲区清单</li>
+                    <li>首次启动对话式问卷采集</li>
+                    <li>AI 发现新盲区 → 画像更新提案</li>
+                </ul>
+            </div>
+            <div class="card success">
+                <h4>操作纪律评分</h4>
+                <ul>
+                    <li>遵循系统建议 → +1 分</li>
+                    <li>被警告仍坚持 → -1 分</li>
+                    <li>定期报告评分与改进建议</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 8: Confirmation Gates -->
+    <div class="section" id="s8">
+        <h2>8. 人工确认门禁完整清单</h2>
+        <table>
+            <tr><th>#</th><th>确认触发条件</th><th>频率</th><th>严重程度</th></tr>
+            <tr><td>1</td><td>股票晋级核心池 A（B→A 提案）</td><td>每周 0-3次</td><td>⚠️ 普通</td></tr>
+            <tr><td>2</td><td>Agent 2 给出买入建议（共识 ≥ 有条件）</td><td>每周 0-5次</td><td>⚠️ 普通</td></tr>
+            <tr><td>3</td><td>L5 估值模型参数调整提案</td><td>每季度/每家</td><td>⚠️ 普通</td></tr>
+            <tr><td>4</td><td>持仓假设断裂 → 减仓/止损建议</td><td>不定期</td><td>🔴 重要</td></tr>
+            <tr><td>5</td><td>高风险操作二次确认门禁</td><td>触发时</td><td>🔴 重要</td></tr>
+            <tr><td>6</td><td>Sicong 个人画像更新提案</td><td>不定期</td><td>⚠️ 普通</td></tr>
+            <tr><td>7</td><td>宏观乘数矩阵调整提案</td><td>每月 0-1次</td><td>⚠️ 普通</td></tr>
+            <tr><td>8</td><td>卖出建议（止损/止盈/假设断裂）</td><td>不定期</td><td>🔴 重要</td></tr>
+            <tr><td>9</td><td>紧急熔断硬止损（无需共识）</td><td>触发时</td><td>🔴 紧急</td></tr>
+            <tr><td>10</td><td>A 股涨跌停板特殊处理确认</td><td>触发时</td><td>⚠️ 普通</td></tr>
+            <tr><td>11</td><td>限售解禁预警确认（A 股）</td><td>触发时</td><td>⚠️ 普通</td></tr>
+        </table>
+    </div>
+
+    <!-- Section 9: Vault Structure -->
+    <div class="section" id="s9">
+        <h2>9. Obsidian Vault 目录结构</h2>
+        <pre><code>touzi-agent-vault/
+├── config/
+│   ├── market-us.yaml           # 美股市场配置
+│   ├── market-cn.yaml           # A股市场配置
+│   ├── quant_config.yaml        # 量价过滤参数
+│   ├── macro_rules.yaml         # 宏观传导矩阵
+│   └── evidence_weights.yaml    # 证据等级软引导（初版为空）
+├── L3-profile/
+│   ├── sicong.md                # Sicong 投资画像
+│   ├── buffett.md               # 巴菲特模型
+│   ├── druckenmiller.md         # 德鲁肯米勒模型
+│   ├── serenity.md              # 白毛股神模型
+│   ├── justin_sun.md            # 孙宇晨模型
+│   ├── market-us.md             # 美股市场画像
+│   └── market-cn.md             # A股市场画像
+├── _inbox/                      # 手动投喂区
+├── Stage_C_Market/
+├── Stage_B_Sectors/
+├── Stage_A_Watchlist/
+│   └── <Ticker>/
+│       ├── L1_raw/
+│       ├── L2_facts/            # 含证据等级
+│       ├── L4_bottleneck_map.md # 产业链卡点图谱
+│       └── L5_valuation.md      # 投资建议 + 假设
+├── L7_trade_log/                # 含拒绝原因
+├── proposals/
+└── archive/</code></pre>
+    </div>
+
+    <!-- Section 11: Diff -->
+    <div class="section" id="s11">
+        <h2>11. V3.1 → V3.2 差异说明</h2>
+        <table class="diff-table">
+            <tr><th>维度</th><th>V3.1</th><th>V3.2</th></tr>
+            <tr><td>Agent 数量</td><td>7 个</td><td>4 个（合并研究+情报+审计→研究分析；合并 IA#1+IA#2→决策）</td></tr>
+            <tr><td>五段式实现</td><td>工作流阶段（有歧义）</td><td>明确单次 Prompt 模板</td></tr>
+            <tr><td>双 IA 辩论</td><td>两个独立 Agent</td><td>单 Agent CoT 自我辩论</td></tr>
+            <tr><td>证据等级权重</td><td>硬编码 1.0/0.7/0.4/0.1</td><td>无硬编码，初版无软引导，保留配置入口</td></tr>
+            <tr><td>Guardrails</td><td>4 道全阻塞</td><td>2 道硬阻塞 + 2 道软警告</td></tr>
+            <tr><td>市场适配</td><td>隐含美股偏向</td><td>Market Adapter 层 + 两套配置 + 两套适配器</td></tr>
+            <tr><td>反馈循环</td><td>季度复盘</td><td>每次拒绝即时回写 Context</td></tr>
+            <tr><td>最终产出</td><td>研究线索优先</td><td>投资建议优先</td></tr>
+            <tr><td>产业链命名</td><td>L0-L4（与 L1-L7 冲突）</td><td>C0-C4</td></tr>
+            <tr><td>叙事领袖</td><td>硬编码 3 人</td><td>可配置清单</td></tr>
+            <tr><td>数据源</td><td>未明确列出</td><td>第 12 节完整清单</td></tr>
+        </table>
+    </div>
+
+    <!-- Section 12: Data Sources -->
+    <div class="section" id="s12">
+        <h2>12. 数据源完整清单</h2>
+
+        <h3>美股数据源</h3>
+        <table>
+            <tr><th>数据类别</th><th>具体内容</th><th>证据等级</th><th>获取方式</th></tr>
+            <tr><td>公司公告</td><td>10-K/10-Q/8-K/招股书</td><td><strong>A</strong></td><td>SEC EDGAR API</td></tr>
+            <tr><td>财报电话会</td><td>Q&A 环节全文</td><td>A/B</td><td>Seeking Alpha / 官方 IR</td></tr>
+            <tr><td>管理层言论</td><td>CEO/CFO 访谈、股东信</td><td>B</td><td>新闻爬取 / 手动投喂</td></tr>
+            <tr><td>机构持仓</td><td>13F 披露</td><td>B</td><td>SEC EDGAR API</td></tr>
+            <tr><td>产业链情报</td><td>机构调研、供应链信息</td><td>B</td><td>手动投喂 + AI 提炼</td></tr>
+            <tr><td>卖方研报</td><td>GS/MS 等券商研报</td><td>C</td><td>手动投喂 / RSS</td></tr>
+            <tr><td>财经新闻</td><td>财经媒体全文</td><td>C</td><td>RSS / 爬虫</td></tr>
+            <tr><td>社交媒体</td><td>Twitter/Reddit</td><td>D</td><td>Twitter API / RSS</td></tr>
+            <tr><td>宏观政策</td><td>FOMC/CPI/GDP/PMI</td><td>A/B</td><td>官方 API / RSS</td></tr>
+            <tr><td>实时行情</td><td>价格/成交量</td><td>A</td><td>富途 MCP / Yahoo Finance</td></tr>
+        </table>
+
+        <h3>A 股数据源</h3>
+        <table>
+            <tr><th>数据类别</th><th>具体内容</th><th>证据等级</th><th>获取方式</th></tr>
+            <tr><td>公司公告</td><td>年报/季报/临时公告</td><td><strong>A</strong></td><td>巨潮资讯网 API</td></tr>
+            <tr><td>调研纪要</td><td>机构调研纪要</td><td>B</td><td>巨潮 / 东方财富</td></tr>
+            <tr><td>管理层言论</td><td>高管访谈、新闻稿</td><td>B</td><td>新闻爬取 / 手动投喂</td></tr>
+            <tr><td>北向资金</td><td>外资持仓变动</td><td>B</td><td>东方财富 API</td></tr>
+            <tr><td>融资融券</td><td>多空数据</td><td>B</td><td>交易所 API</td></tr>
+            <tr><td>龙虎榜</td><td>机构席位追踪</td><td>B</td><td>交易所 API</td></tr>
+            <tr><td>卖方研报</td><td>券商研报</td><td>C</td><td>手动投喂 / RSS</td></tr>
+            <tr><td>财经新闻</td><td>财经媒体全文</td><td>C</td><td>RSS / 爬虫</td></tr>
+            <tr><td>社交媒体</td><td>微博/雪球/论坛</td><td>D</td><td>API / 爬虫</td></tr>
+            <tr><td>宏观政策</td><td>央行/统计局/证监会</td><td>A/B</td><td>官方 API / RSS</td></tr>
+            <tr><td>实时行情</td><td>价格/成交量</td><td>A</td><td>富途 MCP / 东方财富</td></tr>
+            <tr><td>限售解禁</td><td>解禁日期与规模</td><td>A</td><td>交易所公告</td></tr>
+        </table>
+    </div>
+
+    <!-- Footer -->
+    <div class="section" style="text-align: center; color: #8b949e;">
+        <p>V3.2 Unified Architecture Design | 2026-06-18</p>
+        <p style="margin-top: 8px;">同心圆三层 · 双循环 · Market Adapter · CoT 自我辩论 · 快速反馈循环</p>
+    </div>
+
+</div>
+</body>
+</html>
