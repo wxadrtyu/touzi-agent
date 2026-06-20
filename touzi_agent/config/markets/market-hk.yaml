@@ -1,0 +1,11 @@
+market: HK
+currency: HKD
+settlement: T+2
+short_selling: limited
+code_prefix: HK
+daily_limit: null
+costs:
+  commission_rate: 0.0003
+  min_commission: 3.0
+  stamp_duty: 0.0013
+  platform_fee: 15.0

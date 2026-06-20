@@ -1,0 +1,14 @@
+market: CN
+currency: CNY
+settlement: T+1
+short_selling: restricted
+code_prefix: ""
+daily_limit:
+  main_board: 0.10
+  star_board: 0.20
+  chinext: 0.20
+costs:
+  commission_rate: 0.0003
+  min_commission: 5.0
+  stamp_duty: 0.0005
+  transfer_fee: 0.00001

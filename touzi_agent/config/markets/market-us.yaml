@@ -1,0 +1,11 @@
+market: US
+currency: USD
+settlement: T+0
+short_selling: allowed
+code_prefix: US
+daily_limit: null
+costs:
+  commission_rate: 0.0003
+  min_commission: 0.99
+  stamp_duty: 0.0
+  platform_fee: 0.0
