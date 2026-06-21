@@ -62,7 +62,7 @@ Goal: prove the three pipelines + human gate + L7 journal connect end-to-end. Th
 - [ ] Discovery loop: lifecycle, promotion/demotion, registry
 - [ ] Time-normalized expectancy (annualized R) + MAR/SQN metrics
 - [ ] Anti-overfit: walk-forward rigor, pre-registration, multiple-testing bar
-- [ ] LLM validation overlay (1-1) vs raw-quant (1-2) as an A/B comparison
+- [ ] Measure LLM overlay via veto-counterfactual (1-1 vs 1-2 as secondary)
 
 ### Track B — Data + RAG foundation
 - [ ] Full data sourcing US+HK: fundamentals, filings, transcripts, news
