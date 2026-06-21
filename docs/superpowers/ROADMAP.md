@@ -28,6 +28,7 @@
 Goal: prove the three pipelines + human gate + L7 journal connect end-to-end. Thin, US-only, daily bars, stub RAG. Not good yet — just *whole*.
 
 - [ ] Freeze shared contracts: data model, DB schema, RAG API, **L7 journal schema**, common "actionable strategy" output type (all pipelines emit it)
+- [ ] **Single unified portfolio/risk ledger** all pipelines + manual trades check against (N1)
 - [ ] One simple price/volume quant strategy (e.g., MA-cross / breakout) on the §4.1 interface
 - [ ] Thin backtest run of that strategy through the existing engine
 - [ ] Forward-paper stub (records intended trades)
@@ -50,11 +51,13 @@ Goal: prove the three pipelines + human gate + L7 journal connect end-to-end. Th
 - [ ] §12 fidelity fixes to backtester:
   - [ ] Integrate risk model into backtest (no unconstrained concurrent positions)
   - [ ] Gap/slippage-aware fills (stops fill at worse-of gap; per-trade slippage)
-  - [ ] Realistic entry price (next-open/close, not arbitrary `Signal.entry`)
+  - [ ] Realistic entry price: EOD decision → next-session fill (not same-day close)
   - [ ] Trailing-stop / dynamic-exit support (ride winners)
   - [ ] Cross-sectional strategy support (multi-symbol ranking)
   - [ ] Mark-to-market drawdown
   - [ ] Bootstrap confidence interval for expectancy
+  - [ ] Point-in-time universe (incl. delisted) — no survivorship bias
+  - [ ] Point-in-time fundamentals (as-reported, no restatement look-ahead)
 - [ ] Strategy library (multiple real strategies)
 - [ ] Discovery loop: lifecycle, promotion/demotion, registry
 - [ ] Time-normalized expectancy (annualized R) + MAR/SQN metrics
@@ -87,8 +90,11 @@ Goal: prove the three pipelines + human gate + L7 journal connect end-to-end. Th
 ### Final — Live Execution & Deployment
 - [ ] 富途 MCP live order path + reconciliation + fail-safes
 - [ ] Tiered live sizing (tiny → scale by evidence)
-- [ ] Benchmark tracking (vs QQQ/ACWI) + passive core allocation
+- [ ] Exposure-adjusted benchmark tracking + passive core allocation (N8)
 - [ ] Regime monitoring + cross-regime diversification
+- [ ] Per-pipeline anomaly detection + auto-pause / kill-switch (N7)
+- [ ] LLM version pinning + prompt/response audit logging (N6)
+- [ ] Operational failure handling: OpenD downtime, feed gaps, partial fills, **position reconciliation** (N11)
 - [ ] HK market live
 - [ ] FX/tax in net P&L; hardening
 
